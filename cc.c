@@ -9,6 +9,9 @@ char* strdup (char* str) {
     return strcpy(malloc(strlen(str)+1), str);
 }
 
+int true = 1;
+int false = 0;
+
 
 
 char* inputname;
@@ -22,6 +25,7 @@ int token;
 
 int token_other = 0;
 int token_ident = 1;
+int token_int = 2;
 
 void next_char () {
     curch = fgetc(input);
@@ -56,6 +60,13 @@ void next () {
         while ((isalnum(curch) || curch == '_') && !feof(input))
             eat_char();
 
+    } else if (isdigit(curch)) {
+        token = token_int;
+        eat_char();
+
+        while (isdigit(curch) && !feof(input))
+            eat_char();
+
     } else
         eat_char();
 
@@ -77,6 +88,7 @@ int errors;
 
 void error () {
     printf("%s: error: ", inputname);
+    getchar();
     errors++;
 }
 
@@ -84,30 +96,93 @@ int see (char* look) {
     return !strcmp(buffer, look);
 }
 
+int waiting_for (char* look) {
+    return !see(look) & !feof(input);
+}
+
 void accept () {
-    printf("%s ", buffer);
+    printf("accepted: %s\n", buffer);
     next();
 }
 
 void match (char* look) {
-    if (!see(look))
+    if (!see(look)) {
         error();
-        printf("expected %s, found %s\n", look, buffer);
-        errors++;
+        printf("expected '%s', found '%s'\n", look, buffer);
+    }
 
     accept();
 }
 
 int try_match (char* look) {
-    if (!see(look)) {
+    if (see(look)) {
         accept();
-        return 1;
+        return true;
 
     } else
-        return 0;
+        return false;
 }
 
-void decl () {
+void expr ();
+
+void factor () {
+    if (token == token_ident) {
+        accept();
+
+    } else if (token == token_int) {
+        accept();
+
+    } else {
+        error();
+        printf("expected an expression, found '%s'", buffer);
+    }
+}
+
+void object () {
+    factor();
+
+    if (try_match("(")) {
+        if (waiting_for(")")) {
+            expr();
+
+            while (try_match(","))
+                expr();
+        }
+
+        match(")");
+    }
+}
+
+void expr () {
+    object();
+
+    while (try_match("+")) {
+        object();
+    }
+}
+
+void line () {
+    if (try_match("return")) {
+        expr();
+    }
+
+    match(";");
+}
+
+void block () {
+    if (try_match("{")) {
+        while (waiting_for("}"))
+            line();
+
+        match("}");
+
+    } else
+        line();
+}
+
+void decl (int module) {
+    int fn_impl = false;
+
     accept();
 
     int ptr = 0;
@@ -116,17 +191,35 @@ void decl () {
         ptr++;
 
     char* ident = strdup(buffer);
-    puts(ident);
+    accept();
+
+    if (try_match("(")) {
+        decl(false);
+        match(")");
+
+        if (see("{")) {
+            if (!module) {
+                error();
+                puts("a function implementation is illegal here");
+            }
+
+            fn_impl = true;
+
+            block();
+        }
+    }
+
+    if (!fn_impl)
+        match(";");
+
+    (void) ident, (void) module;
 }
 
 void program () {
     errors = 0;
 
     while (!feof(input)) {
-        if (!see(";"))
-            decl();
-
-        match(";");
+        decl(true);
     }
 }
 
