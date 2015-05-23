@@ -67,6 +67,12 @@ void next () {
         while (isdigit(curch) && !feof(input))
             eat_char();
 
+    } else if (curch == '+') {
+        eat_char();
+
+        if (curch == '+')
+            eat_char();
+
     } else
         eat_char();
 
@@ -141,23 +147,46 @@ void factor () {
 void object () {
     factor();
 
-    if (try_match("(")) {
-        if (waiting_for(")")) {
-            expr();
-
-            while (try_match(","))
+    while (true) {
+        if (try_match("(")) {
+            if (waiting_for(")")) {
                 expr();
-        }
 
-        match(")");
+                while (try_match(","))
+                    expr();
+            }
+
+            match(")");
+
+        } else if (try_match("[")) {
+            expr();
+            match("]");
+
+        } else
+            break;
+    }
+}
+
+void unary () {
+    object();
+
+    if (see("++"))
+        accept();
+}
+
+void expr_1 () {
+    unary();
+
+    while (try_match("+")) {
+        unary();
     }
 }
 
 void expr () {
-    object();
+    expr_1();
 
-    while (try_match("+")) {
-        object();
+    while (try_match("=")) {
+        expr_1();
     }
 }
 
