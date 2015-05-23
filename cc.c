@@ -26,6 +26,8 @@ int token;
 int token_other = 0;
 int token_ident = 1;
 int token_int = 2;
+int token_char = 3;
+int token_str = 4;
 
 void next_char () {
     curch = fgetc(input);
@@ -67,10 +69,33 @@ void next () {
         while (isdigit(curch) && !feof(input))
             eat_char();
 
-    } else if (curch == '+') {
+    } else if (curch == '\'' || curch == '"') {
+        if (curch == '"')
+            token = token_str;
+
+        else
+            token = token_char;
         eat_char();
 
-        if (curch == '+')
+        while (curch != buffer[0] && !feof(input)) {
+            if (curch == '\\')
+                eat_char();
+
+            eat_char();
+        }
+
+        eat_char();
+
+    } else if (curch == '+' || curch == '=' || curch == '|' || curch == '&') {
+        eat_char();
+
+        if (curch == buffer[0])
+            eat_char();
+
+    } else if (curch == '!') {
+        eat_char();
+
+        if (curch == '=')
             eat_char();
 
     } else
@@ -103,7 +128,7 @@ int see (char* look) {
 }
 
 int waiting_for (char* look) {
-    return !see(look) & !feof(input);
+    return !see(look) && !feof(input);
 }
 
 void accept () {
@@ -138,9 +163,19 @@ void factor () {
     } else if (token == token_int) {
         accept();
 
+    } else if (token == token_char) {
+        accept();
+
+    } else if (token == token_str) {
+        accept();
+
+    } else if (try_match("(")) {
+        expr();
+        match(")");
+
     } else {
         error();
-        printf("expected an expression, found '%s'", buffer);
+        printf("expected an expression, found '%s'\n", buffer);
     }
 }
 
@@ -168,17 +203,39 @@ void object () {
 }
 
 void unary () {
-    object();
-
-    if (see("++"))
+    if (see("!")) {
         accept();
+        unary();
+
+    } else {
+        object();
+
+        if (see("++"))
+            accept();
+    }
 }
 
-void expr_1 () {
+void expr_3 () {
     unary();
 
     while (try_match("+")) {
         unary();
+    }
+}
+
+void expr_2 () {
+    expr_3();
+
+    while (try_match("==") || try_match("!=")) {
+        expr_3();
+    }
+}
+
+void expr_1 () {
+    expr_2();
+
+    while (try_match("||") || try_match("&&")) {
+        expr_2();
     }
 }
 
