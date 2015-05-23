@@ -193,6 +193,9 @@ void expr () {
 void line () {
     if (try_match("return")) {
         expr();
+
+    } else if (!see(";")) {
+        expr();
     }
 
     match(";");
@@ -209,25 +212,39 @@ void block () {
         line();
 }
 
-void decl (int module) {
+int decl_module = 1;
+int decl_local = 2;
+int decl_param = 3;
+
+void decl (int decl_case) {
+    puts("decl +");
+
     int fn_impl = false;
 
+    /*Simple type*/
     accept();
+
+    /*Level of indirection*/
 
     int ptr = 0;
 
     while (try_match("*"))
         ptr++;
 
+    /*Identifier*/
     char* ident = strdup(buffer);
     accept();
 
+    /*Function?*/
+
     if (try_match("(")) {
-        decl(false);
+        while (waiting_for(")"))
+            decl(decl_param);
+
         match(")");
 
         if (see("{")) {
-            if (!module) {
+            if (decl_case != decl_module) {
                 error();
                 puts("a function implementation is illegal here");
             }
@@ -238,17 +255,27 @@ void decl (int module) {
         }
     }
 
-    if (!fn_impl)
+    /*Initializer*/
+
+    if (try_match("=")) {
+        expr();
+
+        //TODO: check not fn
+    }
+
+    if (!fn_impl && decl_case != decl_param)
         match(";");
 
-    (void) ident, (void) module;
+    (void) ident;
+
+    puts("- decl");
 }
 
 void program () {
     errors = 0;
 
     while (!feof(input)) {
-        decl(true);
+        decl(decl_module);
     }
 }
 
