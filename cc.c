@@ -127,6 +127,10 @@ int see (char* look) {
     return !strcmp(buffer, look);
 }
 
+int see_decl () {
+    return see("int");
+}
+
 int waiting_for (char* look) {
     return !see(look) && !feof(input);
 }
@@ -270,6 +274,11 @@ void while_loop () {
 }
 
 void block ();
+void decl (int decl_case);
+
+int decl_module = 1;
+int decl_local = 2;
+int decl_param = 3;
 
 void line () {
     if (see("if")) {
@@ -280,6 +289,9 @@ void line () {
 
     } else if (see("{")) {
         block();
+
+    } else if (see_decl()) {
+        decl(decl_local);
 
     } else {
         if (try_match("return")) {
@@ -304,10 +316,6 @@ void block () {
     } else
         line();
 }
-
-int decl_module = 1;
-int decl_local = 2;
-int decl_param = 3;
 
 void decl (int decl_case) {
     puts("decl +");
