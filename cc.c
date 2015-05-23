@@ -317,9 +317,16 @@ void block () {
         line();
 }
 
-void decl (int decl_case) {
-    puts("decl +");
+void function (char* ident) {
+    printf(".globl %s\n", ident);
+    printf("%s:\n", ident);
 
+    block();
+
+    puts("ret");
+}
+
+void decl (int decl_case) {
     int fn_impl = false;
 
     accept();
@@ -329,6 +336,7 @@ void decl (int decl_case) {
     while (try_match("*"))
         ptr++;
 
+    char* ident = strdup(buffer);
     accept();
 
     if (try_match("(")) {
@@ -344,8 +352,7 @@ void decl (int decl_case) {
             }
 
             fn_impl = true;
-
-            block();
+            function(ident);
         }
     }
 
@@ -356,11 +363,11 @@ void decl (int decl_case) {
 
     if (!fn_impl && decl_case != decl_param)
         match(";");
-
-    puts("- decl");
 }
 
 void program () {
+    puts(".intel_syntax noprefix");
+
     errors = 0;
 
     while (!feof(input)) {
