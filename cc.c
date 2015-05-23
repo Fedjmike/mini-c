@@ -118,7 +118,7 @@ void lex_init (char* filename) {
 int errors;
 
 void error () {
-    printf("%s: error: ", inputname);
+    fprintf(stderr, "%s: error: ", inputname);
     getchar();
     errors++;
 }
@@ -136,14 +136,14 @@ int waiting_for (char* look) {
 }
 
 void accept () {
-    printf("accepted: %s\n", buffer);
+    fprintf(stderr, "accepted: %s\n", buffer);
     next();
 }
 
 void match (char* look) {
     if (!see(look)) {
         error();
-        printf("expected '%s', found '%s'\n", look, buffer);
+        fprintf(stderr, "expected '%s', found '%s'\n", look, buffer);
     }
 
     accept();
@@ -179,7 +179,7 @@ void factor () {
 
     } else {
         error();
-        printf("expected an expression, found '%s'\n", buffer);
+        fprintf(stderr, "expected an expression, found '%s'\n", buffer);
     }
 }
 
@@ -340,7 +340,7 @@ void decl (int decl_case) {
         if (see("{")) {
             if (decl_case != decl_module) {
                 error();
-                puts("a function implementation is illegal here");
+                fputs(stderr, "a function implementation is illegal here");
             }
 
             fn_impl = true;
@@ -372,7 +372,7 @@ void program () {
 
 int main (int argc, char** argv) {
     if (argc != 2) {
-        puts("Usage: cc <file>");
+        fputs(stderr, "Usage: cc <file>");
         return 1;
     }
 
