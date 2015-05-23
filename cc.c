@@ -340,7 +340,7 @@ void decl (int decl_case) {
         if (see("{")) {
             if (decl_case != decl_module) {
                 error();
-                fputs(stderr, "a function implementation is illegal here");
+                fputs("a function implementation is illegal here", stderr);
             }
 
             fn_impl = true;
@@ -372,7 +372,7 @@ void program () {
 
 int main (int argc, char** argv) {
     if (argc != 2) {
-        fputs(stderr, "Usage: cc <file>");
+        fputs("Usage: cc <file>", stderr);
         return 1;
     }
 
