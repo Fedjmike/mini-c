@@ -128,7 +128,7 @@ int see (char* look) {
 }
 
 int see_decl () {
-    return see("int");
+    return see("int") || see("char");
 }
 
 int waiting_for (char* look) {
@@ -322,21 +322,14 @@ void decl (int decl_case) {
 
     int fn_impl = false;
 
-    /*Simple type*/
     accept();
-
-    /*Level of indirection*/
 
     int ptr = 0;
 
     while (try_match("*"))
         ptr++;
 
-    /*Identifier*/
-    char* ident = strdup(buffer);
     accept();
-
-    /*Function?*/
 
     if (try_match("(")) {
         while (waiting_for(")"))
@@ -356,18 +349,13 @@ void decl (int decl_case) {
         }
     }
 
-    /*Initializer*/
-
     if (try_match("=")) {
         expr();
 
-        //TODO: check not fn
     }
 
     if (!fn_impl && decl_case != decl_param)
         match(";");
-
-    (void) ident;
 
     puts("- decl");
 }
