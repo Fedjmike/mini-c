@@ -190,15 +190,51 @@ void expr () {
     }
 }
 
+void line ();
+
+void if_branch () {
+    match("if");
+    match("(");
+    expr();
+    match(")");
+    line();
+
+    if (try_match("else"))
+        line();
+}
+
+void while_loop () {
+    match("while");
+    match("(");
+    expr();
+    match(")");
+
+    line();
+}
+
+void block ();
+
 void line () {
-    if (try_match("return")) {
-        expr();
+    if (see("if")) {
+        if_branch();
 
-    } else if (!see(";")) {
-        expr();
+    } else if (see("while")) {
+        while_loop();
+
+    } else if (see("{")) {
+        block();
+
+    } else {
+        if (try_match("return")) {
+            if (waiting_for(";"))
+                expr();
+
+        } else if (!see(";")) {
+            expr();
+        }
+
+        match(";");
     }
-
-    match(";");
 }
 
 void block () {
