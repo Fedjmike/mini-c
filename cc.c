@@ -446,8 +446,10 @@ void expr_3 () {
         else if (!strcmp(op, "-"))
             fputs("sub dword ptr [esp], ebx\n", output);
 
-        else
-            fputs("imul dword ptr [esp], ebx\n", output);
+        else {
+            fputs("imul ebx, dword ptr [esp]\n", output);
+            fputs("mov dword ptr [esp], ebx\n", output);
+        }
 
         free(op);
     }
