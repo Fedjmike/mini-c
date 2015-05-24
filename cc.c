@@ -167,6 +167,9 @@ int try_match (char* look) {
 char** fns;
 int fn_no;
 
+char** globals;
+int global_no;
+
 char** params;
 int param_no;
 
@@ -176,6 +179,9 @@ int local_no;
 void sym_init (int max) {
     fns = malloc(ptr_size*max);
     fn_no = 0;
+
+    globals = malloc(ptr_size*max);
+    global_no = 0;
 
     params = malloc(ptr_size*max);
     param_no = 0;
@@ -187,6 +193,11 @@ void sym_init (int max) {
 void new_fn (char* ident) {
     fns[fn_no] = strdup(ident);
     fn_no++;
+}
+
+void new_global (char* ident) {
+    globals[global_no] = strdup(ident);
+    global_no++;
 }
 
 void new_param (char* ident) {
@@ -219,6 +230,19 @@ int lookup_fn (char* look) {
 
     while (i < fn_no) {
         if (!strcmp(fns[i], look))
+            return i;
+
+        i++;
+    }
+
+    return -1;
+}
+
+int lookup_global (char* look) {
+    int i = 0;
+
+    while (i < global_no) {
+        if (!strcmp(globals[i], look))
             return i;
 
         i++;
@@ -273,11 +297,15 @@ void expr ();
 void factor () {
     if (token == token_ident) {
         int fn = lookup_fn(buffer);
+        int global = lookup_global(buffer);
         int param = lookup_param(buffer);
         int local = lookup_local(buffer);
 
         if (fn >= 0) {
             printf("push offset _%s\n", fns[fn]);
+
+        } else if (global >= 0) {
+            printf("push _%s", globals[global]);
 
         } else if (param >= 0) {
             if (lvalue) {
@@ -581,7 +609,9 @@ void decl (int decl_case) {
 
     } else if (fn) {
         new_fn(ident);
-    }
+
+    } else
+        new_global(ident);
 
     if (try_match("=")) {
         if (decl_case != decl_local) {
