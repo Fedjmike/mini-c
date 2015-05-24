@@ -464,6 +464,31 @@ void expr_2 () {
         accept();
         expr_3();
 
+        fputs("pop ebx\n", output);
+        fputs("cmp ebx, dword ptr [esp]\n", output);
+
+        int true_label = new_label();
+        int join_label = new_label();
+
+        if (!strcmp(op, "=="))
+            fprintf(output, "je _%08d\n", true_label);
+
+        else if (!strcmp(op, "!="))
+            fprintf(output, "jne _%08d\n", true_label);
+
+        else if (!strcmp(op, "<"))
+            fprintf(output, "jl _%08d\n", true_label);
+
+        else
+            fprintf(output, "jge _%08d\n", true_label);
+
+        fputs("mov ebx, 0\n", output);
+        fprintf(output, "\t_%08d:\n", true_label);
+        fputs("mov ebx, 1\n", output);
+        fprintf(output, "\t_%08d:\n", join_label);
+
+        fputs("mov dword ptr [esp], ebx\n", output);
+
         free(op);
     }
 }
