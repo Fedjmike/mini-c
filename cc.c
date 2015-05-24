@@ -483,6 +483,7 @@ void expr_2 () {
             fprintf(output, "jge _%08d\n", true_label);
 
         fputs("mov ebx, 0\n", output);
+        fprintf(output, "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
         fputs("mov ebx, 1\n", output);
         fprintf(output, "\t_%08d:\n", join_label);
