@@ -378,6 +378,8 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
+            lvalue = false;
+
             int arg_no = 0;
 
             if (waiting_for(")")) {
