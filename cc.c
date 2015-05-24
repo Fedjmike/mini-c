@@ -392,11 +392,30 @@ void object () {
                 }
             }
 
+            match(")");
+
+            if (arg_no == 2) {
+                fputs("pop eax\n", output);
+                fputs("pop ebx\n", output);
+                fputs("push eax\n", output);
+                fputs("push ebx\n", output);
+
+            } else if (arg_no == 3) {
+                fputs("pop eax\n", output);
+                fputs("pop ebx\n", output);
+                fputs("pop ecx\n", output);
+                fputs("push eax\n", output);
+                fputs("push ebx\n", output);
+                fputs("push ecx\n", output);
+
+            } else if (arg_no >= 4) {
+                error();
+                printf("too many parameters\n");
+            }
+
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
             fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
             fputs("push eax\n", output);
-
-            match(")");
 
         } else if (try_match("[")) {
             int was_lvalue = lvalue;
