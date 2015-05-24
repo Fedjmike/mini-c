@@ -397,6 +397,13 @@ void object () {
             expr();
             match("]");
 
+            fputs("pop ebx\n", output);
+            fputs("pop ecx\n", output);
+            fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
+            fputs("push dword ptr [ebx]\n", output);
+
+            lvalue = true;
+
         } else
             break;
     }
