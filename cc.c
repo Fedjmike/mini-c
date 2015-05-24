@@ -627,6 +627,8 @@ void decl (int decl_case) {
 
         match(")");
 
+        new_fn(ident);
+
         fn = true;
 
         if (see("{")) {
@@ -638,20 +640,18 @@ void decl (int decl_case) {
             fn_impl = true;
             function(ident);
         }
+
+    } else {
+        if (decl_case == decl_param) {
+            new_param(ident);
+
+        } else if (decl_case == decl_local) {
+            local = new_local(ident);
+            printf("sub esp, %d\n", word_size);
+
+        } else
+            new_global(ident);
     }
-
-    if (decl_case == decl_param) {
-        new_param(ident);
-
-    } else if (decl_case == decl_local) {
-        local = new_local(ident);
-        printf("sub esp, %d\n", word_size);
-
-    } else if (fn) {
-        new_fn(ident);
-
-    } else
-        new_global(ident);
 
     if (try_match("=")) {
         if (fn) {
