@@ -332,10 +332,12 @@ void unary () {
             puts("pop ebx");
 
             if (see("++"))
-                puts("add dword ptr [ebx], 1")
+                puts("add dword ptr [ebx], 1");
 
             else
-                puts("sub dword ptr [ebx], 1")
+                puts("sub dword ptr [ebx], 1");
+
+            puts("push dword ptr [ebx]");
 
             lvalue = false;
 
