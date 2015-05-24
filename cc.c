@@ -5,9 +5,7 @@
 
 
 
-char* strdup (char* str) {
-    return strcpy(malloc(strlen(str)+1), str);
-}
+char* strdup (char* str);
 
 int true = 1;
 int false = 0;
@@ -858,6 +856,7 @@ int main (int argc, char** argv) {
     new_fn("strlen");
     new_fn("strcmp");
     new_fn("strcpy");
+    new_fn("strdup");
 
     new_fn("isalpha");
     new_fn("isdigit");
@@ -865,6 +864,8 @@ int main (int argc, char** argv) {
 
     new_fn("puts");
     new_fn("printf");
+
+    new_fn("getchar");
 
     new_fn("fopen");
     new_fn("fgetc");
