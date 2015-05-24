@@ -349,6 +349,15 @@ void factor () {
         accept();
 
     } else if (token == token_str) {
+        int str = new_label();
+
+        fputs(".section .rodata\n", output);
+        fprintf(output, "_%08d:\n", str);
+        fprintf(output, ".asciz %s\n", buffer);
+        fputs(".section .text\n", output);
+
+        fprintf(output, "push offset _%08d\n", str);
+
         accept();
 
     } else if (try_match("(")) {
