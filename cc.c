@@ -524,10 +524,10 @@ void expr_1 () {
         fputs("cmp ebx, 0\n", output);
 
         if (see("||"))
-            fprintf(output, "jz _%08d\n", shortcircuit);
+            fprintf(output, "jnz _%08d\n", shortcircuit);
 
         else
-            fprintf(output, "jnz _%08d\n", shortcircuit);
+            fprintf(output, "jz _%08d\n", shortcircuit);
 
         accept();
         expr_2();
