@@ -17,6 +17,10 @@ int word_size = 4;
 
 
 
+FILE* output;
+
+
+
 char* inputname;
 FILE* input;
 
@@ -129,7 +133,7 @@ void lex_init (char* filename, int maxlen) {
 int errors;
 
 void error () {
-    fprintf(stderr, "%s:%d: error: ", inputname, curln);
+    printf("%s:%d: error: ", inputname, curln);
     errors++;
 }
 
@@ -152,7 +156,7 @@ void accept () {
 void match (char* look) {
     if (!see(look)) {
         error();
-        fprintf(stderr, "expected '%s', found '%s'\n", look, buffer);
+        printf("expected '%s', found '%s'\n", look, buffer);
     }
 
     accept();
@@ -307,36 +311,36 @@ void factor () {
         int local = lookup_local(buffer);
 
         if (fn >= 0) {
-            printf("push offset _%s\n", fns[fn]);
+            fprintf(output, "push offset _%s\n", fns[fn]);
 
         } else if (global >= 0) {
-            printf("push _%s", globals[global]);
+            fprintf(output, "push _%s\n", globals[global]);
 
         } else if (param >= 0) {
             if (lvalue) {
-                printf("lea ebx, dword ptr [ebp+%d]\n", param_offset(param));
-                puts("push ebx");
+                fprintf(output, "lea ebx, dword ptr [ebp+%d]\n", param_offset(param));
+                fputs("push ebx\n", output);
 
             } else
-                printf("push dword ptr [ebp+%d]\n", param_offset(param));
+                fprintf(output, "push dword ptr [ebp+%d]\n", param_offset(param));
 
         } else if (local >= 0) {
             if (lvalue) {
-                printf("lea ebx, dword ptr [ebp-%d]\n", local_offset(local));
-                puts("push ebx");
+                fprintf(output, "lea ebx, dword ptr [ebp-%d]\n", local_offset(local));
+                fputs("push ebx\n", output);
 
             } else
-                printf("push dword ptr [ebp-%d]\n", local_offset(local));
+                fprintf(output, "push dword ptr [ebp-%d]\n", local_offset(local));
 
         } else {
             error();
-            fprintf(stderr, "no symbol '%s' declared\n", buffer);
+            printf("no symbol '%s' declared\n", buffer);
         }
 
         accept();
 
     } else if (token == token_int) {
-        printf("push %d\n", atoi(buffer));
+        fprintf(output, "push %d\n", atoi(buffer));
         accept();
 
     } else if (token == token_char) {
@@ -351,7 +355,7 @@ void factor () {
 
     } else {
         error();
-        fprintf(stderr, "expected an expression, found '%s'\n", buffer);
+        printf("expected an expression, found '%s'\n", buffer);
     }
 }
 
@@ -372,9 +376,9 @@ void object () {
                 }
             }
 
-            printf("call dword ptr [esp+%d]\n", arg_no*word_size);
-            printf("add esp, %d\n", (arg_no+1)*word_size);
-            puts("push eax");
+            fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
+            fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
+            fputs("push eax\n", output);
 
             match(")");
 
@@ -390,11 +394,11 @@ void object () {
 void unary () {
     if (try_match("!")) {
         unary();
-        puts("not dword ptr [esp]");
+        fputs("not dword ptr [esp]\n", output);
 
     } else if (try_match("-")) {
         unary();
-        puts("neg dword ptr [esp]");
+        fputs("neg dword ptr [esp]\n", output);
 
     } else {
         object();
@@ -402,18 +406,18 @@ void unary () {
         if (see("++") || see("--")) {
             if (!lvalue) {
                 error();
-                fputs("unanticipated assignment\n", stderr);
+                puts("unanticipated assignment");
             }
 
-            puts("pop ebx");
+            fputs("pop ebx\n", output);
 
             if (see("++"))
-                puts("add dword ptr [ebx], 1");
+                fputs("add dword ptr [ebx], 1\n", output);
 
             else
-                puts("sub dword ptr [ebx], 1");
+                fputs("sub dword ptr [ebx], 1\n", output);
 
-            puts("push dword ptr [ebx]");
+            fputs("push dword ptr [ebx]\n", output);
 
             lvalue = false;
 
@@ -432,16 +436,16 @@ void expr_3 () {
         accept();
         unary();
 
-        puts("pop ebx");
+        fputs("pop ebx\n", output);
 
         if (!strcmp(op, "+"))
-            puts("add dword ptr [esp], ebx");
+            fputs("add dword ptr [esp], ebx\n", output);
 
         else if (!strcmp(op, "-"))
-            puts("sub dword ptr [esp], ebx");
+            fputs("sub dword ptr [esp], ebx\n", output);
 
         else
-            puts("imul dword ptr [esp], ebx");
+            fputs("imul dword ptr [esp], ebx\n", output);
 
         free(op);
     }
@@ -481,9 +485,9 @@ void expr () {
 
         expr_1();
 
-        puts("pop ebx");
-        puts("pop ecx");
-        puts("mov dword ptr [ecx], ebx");
+        fputs("pop ebx\n", output);
+        fputs("pop ecx\n", output);
+        fputs("mov dword ptr [ecx], ebx\n", output);
     }
 }
 
@@ -497,14 +501,14 @@ void if_branch () {
 
     expr();
 
-    puts("pop ebx");
-    puts("cmp ebx, 0");
-    printf("je _%08d\n", false_branch);
+    fputs("pop ebx\n", output);
+    fputs("cmp ebx, 0\n", output);
+    fprintf(output, "je _%08d\n", false_branch);
 
     match(")");
     line();
 
-    printf("\t_%08d:\n", false_branch);
+    fprintf(output, "\t_%08d:\n", false_branch);
 
     if (try_match("else"))
         line();
@@ -517,20 +521,20 @@ void while_loop () {
     match("while");
     match("(");
 
-    printf("\t_%08d:\n", loop_to);
+    fprintf(output, "\t_%08d:\n", loop_to);
 
     expr();
 
-    puts("pop ebx");
-    puts("cmp ebx, 0");
-    printf("je _%08d\n", break_to);
+    fputs("pop ebx\n", output);
+    fputs("cmp ebx, 0\n", output);
+    fprintf(output, "je _%08d\n", break_to);
 
     match(")");
 
     line();
 
-    printf("jmp _%08d\n", loop_to);
-    printf("\t_%08d:\n", break_to);
+    fprintf(output, "jmp _%08d\n", loop_to);
+    fprintf(output, "\t_%08d:\n", break_to);
 }
 
 void block ();
@@ -557,12 +561,12 @@ void line () {
         if (try_match("return")) {
             if (waiting_for(";")) {
                 expr();
-                puts("pop eax");
-                printf("jmp _%08d\n", return_to);
+                fputs("pop eax\n", output);
+                fprintf(output, "jmp _%08d\n", return_to);
             }
 
         } else if (try_match("break")) {
-            printf("jmp _%08d\n", break_to);
+            fprintf(output, "jmp _%08d\n", break_to);
 
         } else if (!see(";")) {
             lvalue = true;
@@ -586,21 +590,21 @@ void block () {
 }
 
 void function (char* ident) {
-    printf(".globl _%s\n", ident);
-    printf("_%s:\n", ident);
+    fprintf(output, ".globl _%s\n", ident);
+    fprintf(output, "_%s:\n", ident);
 
-    puts("push ebp");
-    puts("mov ebp, esp");
+    fputs("push ebp\n", output);
+    fputs("mov ebp, esp\n", output);
 
     return_to = new_label();
 
     block();
 
-    printf("\t_%08d:\n", return_to);
+    fprintf(output, "\t_%08d:\n", return_to);
 
-    puts("mov esp, ebp");
-    puts("pop ebp");
-    puts("ret");
+    fputs("mov esp, ebp\n", output);
+    fputs("pop ebp\n", output);
+    fputs("ret\n", output);
 }
 
 void decl (int decl_case) {
@@ -634,7 +638,7 @@ void decl (int decl_case) {
         if (see("{")) {
             if (decl_case != decl_module) {
                 error();
-                fputs("a function implementation is illegal here\n", stderr);
+                puts("a function implementation is illegal here");
             }
 
             fn_impl = true;
@@ -647,7 +651,7 @@ void decl (int decl_case) {
 
         } else if (decl_case == decl_local) {
             local = new_local(ident);
-            printf("sub esp, %d\n", word_size);
+            fprintf(output, "sub esp, %d\n", word_size);
 
         } else
             new_global(ident);
@@ -656,43 +660,43 @@ void decl (int decl_case) {
     if (try_match("=")) {
         if (fn) {
             error();
-            fputs("cannot initialize a function\n", stderr);
+            puts("cannot initialize a function");
         }
 
         if (decl_case == decl_module) {
-            puts(".section .data");
-            printf("%s:\n", ident);
+            fputs(".section .data\n", output);
+            fprintf(output, "%s:\n", ident);
 
             if (token == token_int) {
-                printf(".quad %d\n", atoi(buffer));
+                fprintf(output, ".quad %d\n", atoi(buffer));
                 accept();
 
             } else {
                 error();
-                fprintf(stderr, "expected a constant expression, found '%s'", buffer);
+                printf("expected a constant expression, found '%s'", buffer);
             }
 
-            puts(".section .code");
+            fputs(".section .code\n", output);
 
         } else {
             expr();
 
             if (decl_case == decl_local) {
-                puts("pop ebx");
-                printf("mov dword ptr [ebp-%d], ebx\n", local_offset(local));
+                fputs("pop ebx\n", output);
+                fprintf(output, "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
 
             } else {
                 error();
-                fputs("a variable initialization is illegal here\n", stderr);
+                puts("a variable initialization is illegal here");
             }
         }
 
     } else {
         if (decl_case == decl_module && !fn) {
-            puts(".section .data");
-            printf("%s:\n", ident);
-            puts(".quad 0");
-            puts(".section .code");
+            fputs(".section .data\n", output);
+            fprintf(output, "%s:\n", ident);
+            fputs(".quad 0\n", output);
+            fputs(".section .code\n", output);
         }
     }
 
@@ -701,7 +705,7 @@ void decl (int decl_case) {
 }
 
 void program () {
-    puts(".intel_syntax noprefix");
+    fputs(".intel_syntax noprefix\n", output);
 
     errors = 0;
     lvalue = false;
@@ -715,9 +719,11 @@ void program () {
 
 int main (int argc, char** argv) {
     if (argc != 2) {
-        fputs("Usage: cc <file>", stderr);
+        puts("Usage: cc <file>");
         return 1;
     }
+
+    output = fopen("a.s", "w");
 
     lex_init(argv[1], 256);
 
