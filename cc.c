@@ -485,11 +485,21 @@ void expr () {
 void line ();
 
 void if_branch () {
+    int false_branch = new_label();
+
     match("if");
     match("(");
+
     expr();
+
+    puts("pop ebx");
+    puts("cmp ebx, 0");
+    printf("je _%08d\n", false_branch);
+
     match(")");
     line();
+
+    printf("\t_%08d:\n", false_branch);
 
     if (try_match("else"))
         line();
