@@ -743,7 +743,7 @@ void decl (int decl_case) {
                 printf("expected a constant expression, found '%s'", buffer);
             }
 
-            fputs(".section .code\n", output);
+            fputs(".section .text\n", output);
 
         } else {
             expr();
@@ -763,7 +763,7 @@ void decl (int decl_case) {
             fputs(".section .data\n", output);
             fprintf(output, "_%s:\n", ident);
             fputs(".quad 0\n", output);
-            fputs(".section .code\n", output);
+            fputs(".section .text\n", output);
         }
     }
 
