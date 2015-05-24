@@ -202,11 +202,11 @@ int new_local (char* ident) {
 }
 
 int param_offset (int index) {
-    return word_size*(index+1);
+    return word_size*(index+2);
 }
 
 int local_offset (int index) {
-    return word_size*index;
+    return word_size*(index+1);
 }
 
 void new_scope () {
@@ -277,7 +277,7 @@ void factor () {
         int local = lookup_local(buffer);
 
         if (fn >= 0) {
-            printf("push offset %s\n", fns[fn]);
+            printf("push offset _%s\n", fns[fn]);
 
         } else if (param >= 0) {
             if (lvalue) {
@@ -457,7 +457,8 @@ void while_loop () {
     expr();
 
     puts("pop ebx");
-    printf("jz _%08d\n", break_to);
+    puts("cmp ebx, 0");
+    printf("je _%08d\n", break_to);
 
     match(")");
 
@@ -517,8 +518,8 @@ void block () {
 }
 
 void function (char* ident) {
-    printf(".globl %s\n", ident);
-    printf("%s:\n", ident);
+    printf(".globl _%s\n", ident);
+    printf("_%s:\n", ident);
 
     puts("push ebp");
     puts("mov ebp, esp");
@@ -576,6 +577,7 @@ void decl (int decl_case) {
 
     } else if (decl_case == decl_local) {
         local = new_local(ident);
+        printf("sub esp, %d\n", word_size);
 
     } else if (fn) {
         new_fn(ident);
