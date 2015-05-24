@@ -294,7 +294,9 @@ int return_to;
 int break_to;
 
 int new_label () {
-    return label_no++;
+    int label = label_no;
+    label_no++;
+    return label;
 }
 
 
