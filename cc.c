@@ -649,15 +649,38 @@ void decl (int decl_case) {
         new_global(ident);
 
     if (try_match("=")) {
-        if (decl_case != decl_local) {
+        if (fn) {
             error();
-            fputs("a variable initialization is illegal here\n", stderr);
+            fputs("cannot initialize a function\n", stderr);
         }
 
-        expr();
+        if (decl_case == decl_module) {
+            puts(".section .data");
+            printf("%s:\n", ident);
 
-        puts("pop ebx");
-        printf("mov dword ptr [ebp-%d], ebx\n", local_offset(local));
+            if (token == token_int) {
+                printf(".quad %d\n", atoi(buffer));
+                accept();
+
+            } else {
+                error();
+                fprintf(stderr, "expected a constant expression, found '%s'", buffer);
+            }
+
+            puts(".section .code");
+
+        } else {
+            expr();
+
+            if (decl_case == decl_local) {
+                puts("pop ebx");
+                printf("mov dword ptr [ebp-%d], ebx\n", local_offset(local));
+
+            } else {
+                error();
+                fputs("a variable initialization is illegal here\n", stderr);
+            }
+        }
     }
 
     if (!fn_impl && decl_case != decl_param)
