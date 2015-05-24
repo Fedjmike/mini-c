@@ -20,6 +20,7 @@ int word_size = 4;
 char* inputname;
 FILE* input;
 
+int curln;
 char curch;
 
 char* buffer;
@@ -33,6 +34,9 @@ int token_char = 3;
 int token_str = 4;
 
 void next_char () {
+    if (curch == '\n')
+        curln++;
+
     curch = fgetc(input);
 }
 
@@ -114,6 +118,7 @@ void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
+    curln = 1;
     buffer = malloc(maxlen);
     next_char();
     next();
@@ -124,7 +129,7 @@ void lex_init (char* filename, int maxlen) {
 int errors;
 
 void error () {
-    fprintf(stderr, "%s: error: ", inputname);
+    fprintf(stderr, "%s:%d: error: ", inputname, curln);
     errors++;
 }
 
