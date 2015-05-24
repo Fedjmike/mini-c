@@ -471,8 +471,22 @@ void expr_2 () {
 void expr_1 () {
     expr_2();
 
-    while (try_match("||") || try_match("&&")) {
+    while (see("||") || see("&&")) {
+        int shortcircuit = new_label();
+
+        fputs("pop ebx\n", output);
+        fputs("cmp ebx, 0\n", output);
+
+        if (see("||"))
+            fprintf(output, "jz _%08d\n", shortcircuit);
+
+        else
+            fprintf(output, "jnz _%08d\n", shortcircuit);
+
+        accept();
         expr_2();
+
+        fprintf(output, "\t_%08d:\n", shortcircuit);
     }
 }
 
