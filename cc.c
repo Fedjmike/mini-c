@@ -546,6 +546,9 @@ void line () {
                 printf("jmp _%08d\n", return_to);
             }
 
+        } else if (try_match("break")) {
+            printf("jmp _%08d\n", break_to);
+
         } else if (!see(";")) {
             lvalue = true;
             expr();
