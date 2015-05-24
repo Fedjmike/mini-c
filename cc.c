@@ -587,6 +587,7 @@ void line ();
 
 void if_branch () {
     int false_branch = new_label();
+    int join = new_label();
 
     match("if");
     match("(");
@@ -600,10 +601,13 @@ void if_branch () {
     match(")");
     line();
 
+    fprintf(output, "jmp _%08d\n", join);
     fprintf(output, "\t_%08d:\n", false_branch);
 
     if (try_match("else"))
         line();
+
+    fprintf(output, "\t_%08d:\n", join);
 }
 
 void while_loop () {
