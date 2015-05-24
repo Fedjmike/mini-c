@@ -543,14 +543,15 @@ void expr_1 () {
     while (see("||") || see("&&")) {
         int shortcircuit = new_label();
 
-        fputs("pop ebx\n", output);
-        fputs("cmp ebx, 0\n", output);
+        fputs("cmp dword ptr [esp], 0\n", output);
 
         if (see("||"))
             fprintf(output, "jnz _%08d\n", shortcircuit);
 
         else
             fprintf(output, "jz _%08d\n", shortcircuit);
+
+        fputs("pop ebx\n", output);
 
         accept();
         expr_2();
