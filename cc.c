@@ -12,6 +12,9 @@ char* strdup (char* str) {
 int true = 1;
 int false = 0;
 
+int ptr_size = 4;
+int word_size = 4;
+
 
 
 char* inputname;
@@ -86,7 +89,7 @@ void next () {
 
         eat_char();
 
-    } else if (curch == '+' || curch == '=' || curch == '|' || curch == '&') {
+    } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
         eat_char();
 
         if (curch == buffer[0])
@@ -104,11 +107,11 @@ void next () {
     buffer[buflength++] = '\0';
 }
 
-void lex_init (char* filename) {
+void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
-    buffer = malloc(256);
+    buffer = malloc(maxlen);
     next_char();
     next();
 }
@@ -119,7 +122,6 @@ int errors;
 
 void error () {
     fprintf(stderr, "%s: error: ", inputname);
-    getchar();
     errors++;
 }
 
@@ -136,7 +138,6 @@ int waiting_for (char* look) {
 }
 
 void accept () {
-    fprintf(stderr, "accepted: %s\n", buffer);
     next();
 }
 
@@ -158,13 +159,93 @@ int try_match (char* look) {
         return false;
 }
 
+
+
+char** params;
+int param_no;
+
+char** locals;
+int local_no;
+
+void sym_init (int max) {
+    params = malloc(ptr_size*max);
+    param_no = 0;
+
+    locals = malloc(ptr_size*max);
+    local_no = 0;
+}
+
+void new_param (char* ident) {
+    params[param_no++] = strdup(ident);
+}
+
+void new_local (char* ident) {
+    locals[local_no++] = strdup(ident);
+}
+
+int param_offset (int index) {
+    return word_size*(index+1);
+}
+
+int local_offset (int index) {
+    return word_size*index;
+}
+
+void new_scope () {
+    param_no = 0;
+    local_no = 0;
+}
+
+int lookup_param (char* look) {
+    int i = 0;
+
+    while (i < param_no) {
+        if (!strcmp(params[i], look))
+            return i;
+
+        i++;
+    }
+
+    return -1;
+}
+
+int lookup_local (char* look) {
+    int i = 0;
+
+    while (i < local_no) {
+        if (!strcmp(locals[i], look))
+            return i;
+
+        i++;
+    }
+
+    return -1;
+}
+
+
+
 void expr ();
 
 void factor () {
     if (token == token_ident) {
+        int param = lookup_param(buffer);
+        int local = lookup_local(buffer);
+
+        if (param >= 0) {
+            printf("push dword ptr [ebp+%d]\n", param_offset(param));
+
+        } else if (local >= 0) {
+            printf("push dword ptr [ebp-%d]\n", local_offset(local));
+
+        } else {
+            error();
+            fprintf(stderr, "no symbol '%s' declared\n", buffer);
+        }
+
         accept();
 
     } else if (token == token_int) {
+        printf("push %d\n", atoi(buffer));
         accept();
 
     } else if (token == token_char) {
@@ -214,7 +295,7 @@ void unary () {
     } else {
         object();
 
-        if (see("++"))
+        if (see("++") || see("--"))
             accept();
     }
 }
@@ -320,9 +401,11 @@ void block () {
 void function (char* ident) {
     printf(".globl %s\n", ident);
     printf("%s:\n", ident);
+    puts("enter");
 
     block();
 
+    puts("leave");
     puts("ret");
 }
 
@@ -339,7 +422,17 @@ void decl (int decl_case) {
     char* ident = strdup(buffer);
     accept();
 
+    if (decl_case == decl_param) {
+        new_param(ident);
+
+    } else if (decl_case == decl_local) {
+        new_local(ident);
+    }
+
     if (try_match("(")) {
+        if (decl_case == decl_module)
+            new_scope();
+
         while (waiting_for(")"))
             decl(decl_param);
 
@@ -358,7 +451,6 @@ void decl (int decl_case) {
 
     if (try_match("=")) {
         expr();
-
     }
 
     if (!fn_impl && decl_case != decl_param)
@@ -383,7 +475,9 @@ int main (int argc, char** argv) {
         return 1;
     }
 
-    lex_init(argv[1]);
+    lex_init(argv[1], 256);
+
+    sym_init(256);
 
     program();
 
