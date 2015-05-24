@@ -224,6 +224,17 @@ int lookup_local (char* look) {
 
 
 
+int label_no = 0;
+
+int return_to;
+int break_to;
+
+int new_label () {
+    return label_no++;
+}
+
+
+
 int lvalue;
 
 void expr ();
@@ -402,8 +413,11 @@ void line () {
 
     } else {
         if (try_match("return")) {
-            if (waiting_for(";"))
+            if (waiting_for(";")) {
                 expr();
+                puts("pop eax");
+                printf("jmp _%08d\n", return_to);
+            }
 
         } else if (!see(";")) {
             lvalue = true;
@@ -431,8 +445,11 @@ void function (char* ident) {
     printf("%s:\n", ident);
     puts("enter");
 
+    return_to = new_label();
+
     block();
 
+    printf("\t_%08d:\n", return_to);
     puts("leave");
     puts("ret");
 }
