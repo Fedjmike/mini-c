@@ -399,15 +399,23 @@ void object () {
             match(")");
 
         } else if (try_match("[")) {
+            int was_lvalue = lvalue;
+            lvalue = false;
+
             expr();
             match("]");
+
+            lvalue = was_lvalue;
 
             fputs("pop ebx\n", output);
             fputs("pop ecx\n", output);
             fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
-            fputs("push dword ptr [ebx]\n", output);
 
-            lvalue = true;
+            if (lvalue)
+                fputs("push ebx\n", output);
+
+            else
+                fputs("push dword ptr [ebx]\n", output);
 
         } else
             break;
