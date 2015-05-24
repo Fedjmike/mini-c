@@ -518,6 +518,7 @@ void if_branch () {
 
 void while_loop () {
     int loop_to = new_label();
+    int old_break_to = break_to;
     break_to = new_label();
 
     match("while");
@@ -537,6 +538,8 @@ void while_loop () {
 
     fprintf(output, "jmp _%08d\n", loop_to);
     fprintf(output, "\t_%08d:\n", break_to);
+
+    break_to = old_break_to;
 }
 
 void block ();
