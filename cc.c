@@ -480,6 +480,7 @@ void function (char* ident) {
 
 void decl (int decl_case) {
     int fn_impl = false;
+    int local;
 
     accept();
 
@@ -495,7 +496,7 @@ void decl (int decl_case) {
         new_param(ident);
 
     } else if (decl_case == decl_local) {
-        new_local(ident);
+        local = new_local(ident);
     }
 
     if (try_match("(")) {
@@ -519,7 +520,13 @@ void decl (int decl_case) {
     }
 
     if (try_match("=")) {
+        if (decl_case != decl_local)
+            fputs("a variable initialization is illegal here", stderr);
+
         expr();
+
+        puts("pop ebx");
+        printf("mov dword ptr [ebp-%d], ebx\n", local_offset(local));
     }
 
     if (!fn_impl && decl_case != decl_param)
