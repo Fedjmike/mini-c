@@ -417,11 +417,19 @@ void unary () {
 void expr_3 () {
     unary();
 
-    while (try_match("+")) {
+    while (see("+") || see("*")) {
+        int add = see("+");
+
+        accept();
         unary();
 
         puts("pop ebx");
-        puts("add dword ptr [esp], ebx");
+
+        if (add)
+            puts("add dword ptr [esp], ebx");
+
+        else
+            puts("imul dword ptr [esp], ebx");
     }
 }
 
