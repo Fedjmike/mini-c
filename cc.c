@@ -36,26 +36,28 @@ int token_char = 3;
 int token_str = 4;
 
 void next_char () {
-    if (curch == '\n')
+    if (curch == 10)
         curln++;
 
     curch = fgetc(input);
 }
 
 void eat_char () {
-    buffer[buflength] = curch;
+    buffer = buffer+buflength;
+    buffer[0] = curch;
+    buffer = buffer-buflength;
     buflength++;
     next_char();
 }
 
 void next () {
-    while (curch == ' ' || curch == '\r' || curch == '\n' || curch == '\t')
+    while (curch == ' ' || curch == 13 || curch == 10 || curch == 9)
         next_char();
 
     if (curch == '#') {
         next_char();
 
-        while (curch != '\n' && !feof(input))
+        while (curch != 10 && !feof(input))
             next_char();
 
         next();
@@ -79,7 +81,7 @@ void next () {
         while (isdigit(curch) && !feof(input))
             eat_char();
 
-    } else if (curch == '\'' || curch == '"') {
+    } else if (curch == 39 || curch == '"') {
         if (curch == '"')
             token = token_str;
 
@@ -89,7 +91,7 @@ void next () {
         eat_char();
 
         while (curch != buffer[0] && !feof(input)) {
-            if (curch == '\\')
+            if (curch == 92)
                 eat_char();
 
             eat_char();
@@ -112,7 +114,9 @@ void next () {
     } else
         eat_char();
 
-    buffer[buflength] = '\0';
+    buffer = buffer+buflength;
+    buffer[0] = 0;
+    buffer = buffer-buflength;
     buflength++;
 }
 

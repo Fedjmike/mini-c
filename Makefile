@@ -4,9 +4,8 @@ cc: cc.c
 tests/%: tests/%.c cc
 	cc $<
 	gcc -m32 a.s -o $@
-	$@
 
 selfhost: cc
 	cc cc.c
 	gcc -m32 a.s -o ccself
-	ccself
+	ccself tests/triangular.c
