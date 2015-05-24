@@ -628,8 +628,12 @@ void decl (int decl_case) {
         if (decl_case == decl_module)
             new_scope();
 
-        while (waiting_for(")"))
+        if (waiting_for(")")) {
             decl(decl_param);
+
+            while (try_match(","))
+                decl(decl_param);
+        }
 
         match(")");
 
