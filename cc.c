@@ -425,7 +425,21 @@ void object () {
 void unary () {
     if (try_match("!")) {
         unary();
-        fputs("not dword ptr [esp]\n", output);
+
+        int true_label = new_label();
+        int join_label = new_label();
+
+        fputs("cmp dword ptr [esp], 0\n", output);
+        fprintf(output, "je _%08d\n", true_label);
+
+        fputs("mov ebx, 0\n", output);
+        fprintf(output, "jmp _%08d\n", join_label);
+
+        fprintf(output, "\t_%08d:\n", true_label);
+        fputs("mov ebx, 1\n", output);
+
+        fprintf(output, "\t_%08d:\n", join_label);
+        fputs("mov dword ptr [esp], ebx\n", output);
 
     } else if (try_match("-")) {
         unary();
