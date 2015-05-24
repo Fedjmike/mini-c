@@ -5,6 +5,8 @@ int triangular (int n) {
         result = result + n;
         n--;
     }
+
+    return result;
 }
 
 int main () {
