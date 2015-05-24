@@ -681,6 +681,14 @@ void decl (int decl_case) {
                 fputs("a variable initialization is illegal here\n", stderr);
             }
         }
+
+    } else {
+        if (decl_case == decl_module && !fn) {
+            puts(".section .data");
+            printf("%s:\n", ident);
+            puts(".quad 0");
+            puts(".section .code");
+        }
     }
 
     if (!fn_impl && decl_case != decl_param)
