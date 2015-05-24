@@ -183,9 +183,11 @@ void new_param (char* ident) {
     param_no++;
 }
 
-void new_local (char* ident) {
+int new_local (char* ident) {
     locals[local_no] = strdup(ident);
+    int index = local_no;
     local_no++;
+    return index;
 }
 
 int param_offset (int index) {
@@ -407,12 +409,25 @@ void if_branch () {
 }
 
 void while_loop () {
+    int loop_to = new_label();
+    break_to = new_label();
+
     match("while");
     match("(");
+
+    printf("\t_%08d:\n", loop_to);
+
     expr();
+
+    puts("pop ebx");
+    printf("jz _%08d\n", break_to);
+
     match(")");
 
     line();
+
+    printf("jmp _%08d\n", loop_to);
+    printf("\t_%08d:\n", break_to);
 }
 
 void block ();
