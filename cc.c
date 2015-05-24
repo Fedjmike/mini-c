@@ -97,7 +97,7 @@ void next () {
         if (curch == buffer[0])
             eat_char();
 
-    } else if (curch == '!') {
+    } else if (curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
         if (curch == '=')
@@ -383,9 +383,13 @@ void object () {
 }
 
 void unary () {
-    if (see("!")) {
-        accept();
+    if (try_match("!")) {
         unary();
+        puts("not dword ptr [esp]");
+
+    } else if (try_match("-")) {
+        unary();
+        puts("neg dword ptr [esp]");
 
     } else {
         object();
@@ -417,27 +421,37 @@ void unary () {
 void expr_3 () {
     unary();
 
-    while (see("+") || see("*")) {
-        int add = see("+");
+    while (see("+") || see("-") || see("*")) {
+        char* op = strdup(buffer);
 
         accept();
         unary();
 
         puts("pop ebx");
 
-        if (add)
+        if (!strcmp(op, "+"))
             puts("add dword ptr [esp], ebx");
+
+        else if (!strcmp(op, "-"))
+            puts("sub dword ptr [esp], ebx");
 
         else
             puts("imul dword ptr [esp], ebx");
+
+        free(op);
     }
 }
 
 void expr_2 () {
     expr_3();
 
-    while (try_match("==") || try_match("!=")) {
+    while (see("==") || see("!=") || see("<") || see(">=")) {
+        char* op = strdup(buffer);
+
+        accept();
         expr_3();
+
+        free(op);
     }
 }
 
