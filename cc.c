@@ -164,6 +164,9 @@ int try_match (char* look) {
 
 
 
+char** fns;
+int fn_no;
+
 char** params;
 int param_no;
 
@@ -171,11 +174,19 @@ char** locals;
 int local_no;
 
 void sym_init (int max) {
+    fns = malloc(ptr_size*max);
+    fn_no = 0;
+
     params = malloc(ptr_size*max);
     param_no = 0;
 
     locals = malloc(ptr_size*max);
     local_no = 0;
+}
+
+void new_fn (char* ident) {
+    fns[fn_no] = strdup(ident);
+    fn_no++;
 }
 
 void new_param (char* ident) {
@@ -201,6 +212,19 @@ int local_offset (int index) {
 void new_scope () {
     param_no = 0;
     local_no = 0;
+}
+
+int lookup_fn (char* look) {
+    int i = 0;
+
+    while (i < fn_no) {
+        if (!strcmp(fns[i], look))
+            return i;
+
+        i++;
+    }
+
+    return -1;
 }
 
 int lookup_param (char* look) {
@@ -248,10 +272,14 @@ void expr ();
 
 void factor () {
     if (token == token_ident) {
+        int fn = lookup_fn(buffer);
         int param = lookup_param(buffer);
         int local = lookup_local(buffer);
 
-        if (param >= 0) {
+        if (fn >= 0) {
+            printf("push offset %s\n", fns[fn]);
+
+        } else if (param >= 0) {
             if (lvalue) {
                 printf("lea ebx, dword ptr [ebp+%d]\n", param_offset(param));
                 puts("push ebx");
@@ -299,12 +327,21 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
+            int arg_no = 0;
+
             if (waiting_for(")")) {
                 expr();
+                arg_no++;
 
-                while (try_match(","))
+                while (try_match(",")) {
                     expr();
+                    arg_no++;
+                }
             }
+
+            printf("call dword ptr [esp+%d]\n", arg_no*word_size);
+            printf("add esp, %d\n", (arg_no+1)*word_size);
+            puts("push eax");
 
             match(")");
 
@@ -482,18 +519,23 @@ void block () {
 void function (char* ident) {
     printf(".globl %s\n", ident);
     printf("%s:\n", ident);
-    puts("enter");
+
+    puts("push ebp");
+    puts("mov ebp, esp");
 
     return_to = new_label();
 
     block();
 
     printf("\t_%08d:\n", return_to);
-    puts("leave");
+
+    puts("mov esp, ebp");
+    puts("pop ebp");
     puts("ret");
 }
 
 void decl (int decl_case) {
+    int fn = false;
     int fn_impl = false;
     int local;
 
@@ -507,13 +549,6 @@ void decl (int decl_case) {
     char* ident = strdup(buffer);
     accept();
 
-    if (decl_case == decl_param) {
-        new_param(ident);
-
-    } else if (decl_case == decl_local) {
-        local = new_local(ident);
-    }
-
     if (try_match("(")) {
         if (decl_case == decl_module)
             new_scope();
@@ -522,6 +557,8 @@ void decl (int decl_case) {
             decl(decl_param);
 
         match(")");
+
+        fn = true;
 
         if (see("{")) {
             if (decl_case != decl_module) {
@@ -532,6 +569,16 @@ void decl (int decl_case) {
             fn_impl = true;
             function(ident);
         }
+    }
+
+    if (decl_case == decl_param) {
+        new_param(ident);
+
+    } else if (decl_case == decl_local) {
+        local = new_local(ident);
+
+    } else if (fn) {
+        new_fn(ident);
     }
 
     if (try_match("=")) {
