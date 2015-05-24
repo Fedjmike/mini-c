@@ -564,7 +564,7 @@ void decl (int decl_case) {
         if (see("{")) {
             if (decl_case != decl_module) {
                 error();
-                fputs("a function implementation is illegal here", stderr);
+                fputs("a function implementation is illegal here\n", stderr);
             }
 
             fn_impl = true;
@@ -584,8 +584,10 @@ void decl (int decl_case) {
     }
 
     if (try_match("=")) {
-        if (decl_case != decl_local)
-            fputs("a variable initialization is illegal here", stderr);
+        if (decl_case != decl_local) {
+            error();
+            fputs("a variable initialization is illegal here\n", stderr);
+        }
 
         expr();
 
