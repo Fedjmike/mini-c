@@ -481,7 +481,7 @@ void expr_2 () {
         expr_3();
 
         fputs("pop ebx\n", output);
-        fputs("cmp ebx, dword ptr [esp]\n", output);
+        fputs("cmp dword ptr [esp], ebx\n", output);
 
         int true_label = new_label();
         int join_label = new_label();
