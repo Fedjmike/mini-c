@@ -409,6 +409,10 @@ void object () {
 
             fputs("pop ebx\n", output);
             fputs("pop ecx\n", output);
+
+            if (was_lvalue)
+                fputs("mov ecx, dword ptr [ecx]\n", output);
+
             fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
 
             if (lvalue)
