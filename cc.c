@@ -224,6 +224,8 @@ int lookup_local (char* look) {
 
 
 
+int lvalue;
+
 void expr ();
 
 void factor () {
@@ -232,10 +234,20 @@ void factor () {
         int local = lookup_local(buffer);
 
         if (param >= 0) {
-            printf("push dword ptr [ebp+%d]\n", param_offset(param));
+            if (lvalue) {
+                printf("lea ebx, dword ptr [ebp+%d]\n", param_offset(param));
+                puts("push ebx");
+
+            } else
+                printf("push dword ptr [ebp+%d]\n", param_offset(param));
 
         } else if (local >= 0) {
-            printf("push dword ptr [ebp-%d]\n", local_offset(local));
+            if (lvalue) {
+                printf("lea ebx, dword ptr [ebp-%d]\n", local_offset(local));
+                puts("push ebx");
+
+            } else
+                printf("push dword ptr [ebp-%d]\n", local_offset(local));
 
         } else {
             error();
@@ -305,6 +317,9 @@ void expr_3 () {
 
     while (try_match("+")) {
         unary();
+
+        puts("pop ebx");
+        puts("add dword ptr [esp], ebx");
     }
 }
 
@@ -327,8 +342,19 @@ void expr_1 () {
 void expr () {
     expr_1();
 
-    while (try_match("=")) {
+    if (try_match("=")) {
+        if (!lvalue) {
+            error();
+            puts("unanticipated assignment");
+        }
+
+        lvalue = false;
+
         expr_1();
+
+        puts("pop ebx");
+        puts("pop ecx");
+        puts("mov dword ptr [ecx], ebx");
     }
 }
 
@@ -380,7 +406,9 @@ void line () {
                 expr();
 
         } else if (!see(";")) {
+            lvalue = true;
             expr();
+            lvalue = false;
         }
 
         match(";");
@@ -461,6 +489,7 @@ void program () {
     puts(".intel_syntax noprefix");
 
     errors = 0;
+    lvalue = false;
 
     while (!feof(input)) {
         decl(decl_module);
