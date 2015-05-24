@@ -676,7 +676,7 @@ void decl (int decl_case) {
 
         if (decl_case == decl_module) {
             fputs(".section .data\n", output);
-            fprintf(output, "%s:\n", ident);
+            fprintf(output, "_%s:\n", ident);
 
             if (token == token_int) {
                 fprintf(output, ".quad %d\n", atoi(buffer));
@@ -705,7 +705,7 @@ void decl (int decl_case) {
     } else {
         if (decl_case == decl_module && !fn) {
             fputs(".section .data\n", output);
-            fprintf(output, "%s:\n", ident);
+            fprintf(output, "_%s:\n", ident);
             fputs(".quad 0\n", output);
             fputs(".section .code\n", output);
         }
