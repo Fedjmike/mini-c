@@ -663,7 +663,7 @@ void line () {
         } else if (try_match("break")) {
             fprintf(output, "jmp _%08d\n", break_to);
 
-        } else if (!see(";")) {
+        } else if (waiting_for(";")) {
             lvalue = true;
             expr();
             lvalue = false;
