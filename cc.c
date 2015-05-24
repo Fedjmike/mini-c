@@ -316,7 +316,11 @@ void factor () {
             fprintf(output, "push offset _%s\n", fns[fn]);
 
         } else if (global >= 0) {
-            fprintf(output, "push _%s\n", globals[global]);
+            if (lvalue)
+                fprintf(output, "push offset _%s\n", globals[global]);
+
+            else
+                fprintf(output, "push dword ptr [_%s]\n", globals[global]);
 
         } else if (param >= 0) {
             if (lvalue) {
