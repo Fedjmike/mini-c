@@ -350,7 +350,7 @@ void factor () {
         accept();
 
     } else if (token == token_char) {
-        fprintf(output, "push %d\n", atoi(buffer));
+        fprintf(output, "push %d\n", buffer[1]);
         accept();
 
     } else if (token == token_str) {
