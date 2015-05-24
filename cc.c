@@ -402,7 +402,7 @@ void unary () {
         if (see("++") || see("--")) {
             if (!lvalue) {
                 error();
-                puts("unanticipated assignment");
+                fputs("unanticipated assignment\n", stderr);
             }
 
             puts("pop ebx");
