@@ -37,7 +37,8 @@ void next_char () {
 }
 
 void eat_char () {
-    buffer[buflength++] = curch;
+    buffer[buflength] = curch;
+    buflength++;
     next_char();
 }
 
@@ -78,6 +79,7 @@ void next () {
 
         else
             token = token_char;
+
         eat_char();
 
         while (curch != buffer[0] && !feof(input)) {
@@ -104,7 +106,8 @@ void next () {
     } else
         eat_char();
 
-    buffer[buflength++] = '\0';
+    buffer[buflength] = '\0';
+    buflength++;
 }
 
 void lex_init (char* filename, int maxlen) {
@@ -176,11 +179,13 @@ void sym_init (int max) {
 }
 
 void new_param (char* ident) {
-    params[param_no++] = strdup(ident);
+    params[param_no] = strdup(ident);
+    param_no++;
 }
 
 void new_local (char* ident) {
-    locals[local_no++] = strdup(ident);
+    locals[local_no] = strdup(ident);
+    local_no++;
 }
 
 int param_offset (int index) {
@@ -318,8 +323,25 @@ void unary () {
     } else {
         object();
 
-        if (see("++") || see("--"))
+        if (see("++") || see("--")) {
+            if (!lvalue) {
+                error();
+                puts("unanticipated assignment");
+            }
+
+            puts("pop ebx");
+
+            if (see("++"))
+                puts("add dword ptr [ebx], 1")
+
+            else
+                puts("sub dword ptr [ebx], 1")
+
+            lvalue = false;
+
             accept();
+
+        }
     }
 }
 
