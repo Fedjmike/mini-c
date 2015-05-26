@@ -760,10 +760,8 @@ void decl (int decl_case) {
 
     accept();
 
-    int ptr = 0;
-
     while (try_match("*"))
-        ptr++;
+        ;
 
     char* ident = strdup(buffer);
     accept();
