@@ -111,6 +111,33 @@ void next () {
         if (curch == '=')
             eat_char();
 
+    /*Either a comment or a '/' operator*/
+    } else if (curch == '/') {
+        eat_char();
+
+        /*Comment*/
+        if (curch == '*') {
+            next_char();
+
+            buflength = 0;
+
+            while (!feof(input)) {
+                if (curch == '*') {
+                    next_char();
+
+                    if (curch == '/') {
+                        next_char();
+
+                        /*Restart the function, overwriting any chars eaten so far*/
+                        next();
+                        return;
+                    }
+
+                } else
+                    next_char();
+            }
+        }
+
     } else
         eat_char();
 
