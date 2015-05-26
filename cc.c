@@ -405,12 +405,10 @@ void object () {
                 fputs("push ebx\n", output);
 
             } else if (arg_no == 3) {
-                fputs("pop eax\n", output);
-                fputs("pop ebx\n", output);
-                fputs("pop ecx\n", output);
-                fputs("push eax\n", output);
-                fputs("push ebx\n", output);
-                fputs("push ecx\n", output);
+                fputs("mov eax, dword ptr [esp]\n", output);
+                fputs("mov ebx, dword ptr [esp+8]\n", output);
+                fputs("mov dword ptr [esp+8], eax\n", output);
+                fputs("mov dword ptr [esp], ebx\n", output);
 
             } else if (arg_no >= 4) {
                 error();
