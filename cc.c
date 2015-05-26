@@ -684,7 +684,17 @@ void while_loop () {
     break_to = old_break_to;
 }
 
-void block ();
+void block () {
+    if (try_match("{")) {
+        while (waiting_for("}"))
+            line();
+
+        match("}");
+
+    } else
+        line();
+}
+
 void decl (int decl_case);
 
 int decl_module = 1;
@@ -723,17 +733,6 @@ void line () {
 
         match(";");
     }
-}
-
-void block () {
-    if (try_match("{")) {
-        while (waiting_for("}"))
-            line();
-
-        match("}");
-
-    } else
-        line();
 }
 
 void function (char* ident) {
