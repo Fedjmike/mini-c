@@ -3,8 +3,6 @@
 #include "ctype.h"
 #include "stdio.h"
 
-
-
 char* strdup (char* str);
 
 int true = 1;
@@ -13,11 +11,9 @@ int false = 0;
 int ptr_size = 4;
 int word_size = 4;
 
-
-
 FILE* output;
 
-
+/*==== Lexer ====*/
 
 char* inputname;
 FILE* input;
@@ -51,15 +47,18 @@ void eat_char () {
 }
 
 void next () {
+    /*Skip whitespace*/
     while (curch == ' ' || curch == 13 || curch == 10 || curch == 9)
         next_char();
 
+    /*Treat preprocessor lines as line comments*/
     if (curch == '#') {
         next_char();
 
         while (curch != 10 && !feof(input))
             next_char();
 
+        /*Restart the function (to skip subsequent whitespace and pp)*/
         next();
         return;
     }
@@ -67,6 +66,7 @@ void next () {
     buflength = 0;
     token = token_other;
 
+    /*Identifier or keyword*/
     if (isalpha(curch)) {
         token = token_ident;
         eat_char();
@@ -74,6 +74,7 @@ void next () {
         while ((isalnum(curch) || curch == '_') && !feof(input))
             eat_char();
 
+    /*Integer literal*/
     } else if (isdigit(curch)) {
         token = token_int;
         eat_char();
@@ -81,6 +82,7 @@ void next () {
         while (isdigit(curch) && !feof(input))
             eat_char();
 
+    /*String or character literal*/
     } else if (curch == 39 || curch == '"') {
         if (curch == '"')
             token = token_str;
@@ -99,12 +101,14 @@ void next () {
 
         eat_char();
 
+    /*Operators which form a new operator when duplicated e.g. '++'*/
     } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
         eat_char();
 
         if (curch == buffer[0])
             eat_char();
 
+    /*Operators which may be followed by a '='*/
     } else if (curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
@@ -151,13 +155,14 @@ void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
+    /*Get the lexer into a usable state for the parser*/
     curln = 1;
     buffer = malloc(maxlen);
     next_char();
     next();
 }
 
-
+/*==== Parser helper functions ====*/
 
 int errors;
 
@@ -170,6 +175,9 @@ int see (char* look) {
     return !strcmp(buffer, look);
 }
 
+/*Does the next token imply the start of a declaration?
+  Used for disambiguating between local variable decls
+  and expressions as statements.*/
 int see_decl () {
     return see("int") || see("char");
 }
@@ -200,7 +208,7 @@ int try_match (char* look) {
         return false;
 }
 
-
+/*==== Symbol table ====*/
 
 char** fns;
 int fn_no;
@@ -251,13 +259,20 @@ int new_local (char* ident) {
 }
 
 int param_offset (int index) {
+    /*At and above the base pointer, in order, are:
+       1. the old base pointer, [ebp]
+       2. the return address, [ebp-W]
+       3. the first parameter, [ebp-2W]
+         and so on*/
     return word_size*(index+2);
 }
 
 int local_offset (int index) {
+    /*The first local variable is directly below the base pointer*/
     return word_size*(index+1);
 }
 
+/*Enter the scope of a new function body*/
 void new_scope () {
     param_no = 0;
     local_no = 0;
@@ -315,10 +330,11 @@ int lookup_local (char* look) {
     return -1;
 }
 
-
+/*==== Codegen labels ====*/
 
 int label_no = 0;
 
+/*The labels to jump to on `return` and `break`*/
 int return_to;
 int break_to;
 
@@ -328,7 +344,7 @@ int new_label () {
     return label;
 }
 
-
+/*==== One-pass parser and code generator ====*/
 
 int lvalue;
 
@@ -425,6 +441,8 @@ void object () {
 
             match(")");
 
+            /*Reverse the parameters as per cdecl*/
+
             if (arg_no == 2) {
                 fputs("pop eax\n", output);
                 fputs("pop ebx\n", output);
@@ -476,6 +494,7 @@ void object () {
 
 void unary () {
     if (try_match("!")) {
+        /*Recurse to allow chains of unary operations, LIFO order*/
         unary();
 
         int true_label = new_label();
@@ -577,6 +596,7 @@ void expr_2 () {
         else
             fprintf(output, "jge _%08d\n", true_label);
 
+        /*todo quicker direct*/
         fputs("mov ebx, 0\n", output);
         fprintf(output, "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
@@ -681,6 +701,7 @@ void while_loop () {
     fprintf(output, "jmp _%08d\n", loop_to);
     fprintf(output, "\t_%08d:\n", break_to);
 
+    /*Restore the break label for any outer loop*/
     break_to = old_break_to;
 }
 
@@ -736,15 +757,21 @@ void line () {
 }
 
 void function (char* ident) {
+    /*Prologue*/
+
     fprintf(output, ".globl _%s\n", ident);
     fprintf(output, "_%s:\n", ident);
 
     fputs("push ebp\n", output);
     fputs("mov ebp, esp\n", output);
 
+    /*Body*/
+
     return_to = new_label();
 
     block();
+
+    /*Epilogue*/
 
     fprintf(output, "\t_%08d:\n", return_to);
 
@@ -766,10 +793,12 @@ void decl (int decl_case) {
     char* ident = strdup(buffer);
     accept();
 
+    /*Functions*/
     if (try_match("(")) {
         if (decl_case == decl_module)
             new_scope();
 
+        /*Params*/
         if (waiting_for(")")) {
             decl(decl_param);
 
@@ -783,6 +812,7 @@ void decl (int decl_case) {
 
         fn = true;
 
+        /*Body*/
         if (see("{")) {
             if (decl_case != decl_module) {
                 error();
@@ -793,6 +823,7 @@ void decl (int decl_case) {
             function(ident);
         }
 
+    /*Add it to the symbol table*/
     } else {
         if (decl_case == decl_param) {
             new_param(ident);
@@ -805,6 +836,7 @@ void decl (int decl_case) {
             new_global(ident);
     }
 
+    /*Initialization*/
     if (try_match("=")) {
         if (fn) {
             error();
@@ -843,6 +875,7 @@ void decl (int decl_case) {
         if (decl_case == decl_module && !fn) {
             fputs(".section .data\n", output);
             fprintf(output, "_%s:\n", ident);
+            /*Static data defaults to zero if no initializer*/
             fputs(".quad 0\n", output);
             fputs(".section .text\n", output);
         }
