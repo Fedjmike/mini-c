@@ -166,8 +166,9 @@ void lex_init (char* filename, int maxlen) {
 
 int errors;
 
-void error () {
+void error (char* format) {
     printf("%s:%d: error: ", inputname, curln);
+    printf(format, buffer);
     errors++;
 }
 
@@ -192,8 +193,8 @@ void accept () {
 
 void match (char* look) {
     if (!see(look)) {
-        error();
-        printf("expected '%s', found '%s'\n", look, buffer);
+        printf("%s:%d: error: expected '%s', found '%s'\n", inputname, curln, look, buffer);
+        errors++;
     }
 
     accept();
@@ -383,10 +384,8 @@ void factor () {
             } else
                 fprintf(output, "push dword ptr [ebp-%d]\n", local_offset(local));
 
-        } else {
-            error();
-            printf("no symbol '%s' declared\n", buffer);
-        }
+        } else
+            error("no symbol '%s' declared\n");
 
         accept();
 
@@ -414,10 +413,8 @@ void factor () {
         expr();
         match(")");
 
-    } else {
-        error();
-        printf("expected an expression, found '%s'\n", buffer);
-    }
+    } else
+        error("expected an expression, found '%s'\n");
 }
 
 void object () {
@@ -455,10 +452,8 @@ void object () {
                 fputs("mov dword ptr [esp+8], eax\n", output);
                 fputs("mov dword ptr [esp], ebx\n", output);
 
-            } else if (arg_no >= 4) {
-                error();
-                printf("too many parameters\n");
-            }
+            } else if (arg_no >= 4)
+                error("too many parameters\n");
 
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
             fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
@@ -520,10 +515,8 @@ void unary () {
         object();
 
         if (see("++") || see("--")) {
-            if (!lvalue) {
-                error();
-                puts("unanticipated assignment");
-            }
+            if (!lvalue)
+                error("unanticipated assignment\n");
 
             fputs("pop ebx\n", output);
 
@@ -636,10 +629,8 @@ void expr () {
     expr_1();
 
     if (try_match("=")) {
-        if (!lvalue) {
-            error();
-            puts("unanticipated assignment");
-        }
+        if (!lvalue)
+            error("unanticipated assignment\n");
 
         lvalue = false;
 
@@ -814,10 +805,8 @@ void decl (int decl_case) {
 
         /*Body*/
         if (see("{")) {
-            if (decl_case != decl_module) {
-                error();
-                puts("a function implementation is illegal here");
-            }
+            if (decl_case != decl_module)
+                error("a function implementation is illegal here\n");
 
             fn_impl = true;
             function(ident);
@@ -838,10 +827,8 @@ void decl (int decl_case) {
 
     /*Initialization*/
     if (try_match("=")) {
-        if (fn) {
-            error();
-            puts("cannot initialize a function");
-        }
+        if (fn)
+            error("cannot initialize a function\n");
 
         if (decl_case == decl_module) {
             fputs(".section .data\n", output);
@@ -851,10 +838,8 @@ void decl (int decl_case) {
                 fprintf(output, ".quad %d\n", atoi(buffer));
                 accept();
 
-            } else {
-                error();
-                printf("expected a constant expression, found '%s'", buffer);
-            }
+            } else
+                error("expected a constant expression, found '%s'\n");
 
             fputs(".section .text\n", output);
 
@@ -865,10 +850,8 @@ void decl (int decl_case) {
                 fputs("pop ebx\n", output);
                 fprintf(output, "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
 
-            } else {
-                error();
-                puts("a variable initialization is illegal here");
-            }
+            } else
+                error("a variable initialization is illegal here\n");
         }
 
     } else {
