@@ -193,7 +193,8 @@ void accept () {
 
 void match (char* look) {
     if (!see(look)) {
-        printf("%s:%d: error: expected '%s', found '%s'\n", inputname, curln, look, buffer);
+        printf("%s:%d: error: ", inputname, curln);
+        printf("expected '%s', found '%s'\n", look, buffer);
         errors++;
     }
 
