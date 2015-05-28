@@ -723,19 +723,19 @@ int decl_local = 2;
 int decl_param = 3;
 
 void line () {
-    if (see("if")) {
+    if (see("if"))
         if_branch();
 
-    } else if (see("while")) {
+    else if (see("while"))
         while_loop();
 
-    } else if (see("{")) {
+    else if (see("{"))
         block();
 
-    } else if (see_decl()) {
+    else if (see_decl())
         decl(decl_local);
 
-    } else {
+    else {
         if (try_match("return")) {
             if (waiting_for(";")) {
                 expr();
@@ -891,9 +891,8 @@ void program () {
     errors = 0;
     lvalue = false;
 
-    while (!feof(input)) {
+    while (!feof(input))
         decl(decl_module);
-    }
 }
 
 
