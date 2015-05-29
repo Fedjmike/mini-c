@@ -550,14 +550,11 @@ void expr_2 () {
         else
             fprintf(output, "jge _%08d\n", true_label);
 
-        /*todo quicker direct*/
-        fputs("mov ebx, 0\n", output);
+        fputs("mov dword ptr [esp], 0\n", output);
         fprintf(output, "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
-        fputs("mov ebx, 1\n", output);
+        fputs("mov dword ptr [esp], 1\n", output);
         fprintf(output, "\t_%08d:\n", join_label);
-
-        fputs("mov dword ptr [esp], ebx\n", output);
 
         free(op);
     }
@@ -838,8 +835,6 @@ void program () {
     while (!feof(input))
         decl(decl_module);
 }
-
-
 
 int main (int argc, char** argv) {
     if (argc != 2) {
