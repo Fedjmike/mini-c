@@ -460,14 +460,13 @@ void unary () {
         fputs("cmp dword ptr [esp], 0\n", output);
         fprintf(output, "je _%08d\n", true_label);
 
-        fputs("mov ebx, 0\n", output);
+        fputs("mov dword ptr [esp], 0\n", output);
         fprintf(output, "jmp _%08d\n", join_label);
 
         fprintf(output, "\t_%08d:\n", true_label);
-        fputs("mov ebx, 1\n", output);
+        fputs("mov dword ptr [esp], 1\n", output);
 
         fprintf(output, "\t_%08d:\n", join_label);
-        fputs("mov dword ptr [esp], ebx\n", output);
 
     } else if (try_match("-")) {
         unary();
