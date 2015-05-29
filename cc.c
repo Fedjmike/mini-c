@@ -337,6 +337,21 @@ int lvalue;
 
 void expr ();
 
+/*The code generator for expressions works by placing the results
+  on the top of the stack. Anything involving registers would be
+  difficult because most registers aren't saved between function
+  calls.
+
+  I did try using eax as if it were the top of the stack, it made
+  some things simpler but other things less simple.*/
+
+/*Regarding lvalues and assignment:
+
+  If the global lvalue flag is set, then symbol addresses are put
+  on the stack, not their values. The compiler can only guess
+  ahead of time whether an expression is going to be used as an
+  lvalue, which greatly restricts the use of '++'.*/
+
 void factor () {
     if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
@@ -686,6 +701,7 @@ void block () {
 
 void decl (int decl_case);
 
+/*See decl() implementation*/
 int decl_module = 1;
 int decl_local = 2;
 int decl_param = 3;
@@ -749,6 +765,11 @@ void function (char* ident) {
 }
 
 void decl (int decl_case) {
+    /*A C declaration comes in three forms:
+       - Local decls, which end in a semicolon and can have an initializer.
+       - Parameter decls, which do not and cannot.
+       - Module decls, which end in a semicolon unless there is a function body.*/
+
     int fn = false;
     int fn_impl = false;
     int local;
