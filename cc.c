@@ -1,3 +1,8 @@
+/********
+ * mini-c, by Sam Nipps (c) 2015
+ * MIT license
+ ********/
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
