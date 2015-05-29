@@ -167,6 +167,11 @@ void lex_init (char* filename, int maxlen) {
     next();
 }
 
+void lex_end () {
+    free(buffer);
+    fclose(input);
+}
+
 /*==== Parser helper functions ====*/
 
 int errors;
@@ -238,6 +243,23 @@ void sym_init (int max) {
 
     locals = malloc(ptr_size*max);
     local_no = 0;
+}
+
+void table_end (char** table, int table_size) {
+    int i = 0;
+
+    while (i < table_size) {
+        free(table[i]);
+        i++;
+    }
+}
+
+void sym_end () {
+    table_end(globals, global_no);
+    free(is_fn);
+
+    table_end(params, param_no);
+    table_end(locals, local_no);
 }
 
 void new_global (char* ident) {
@@ -860,6 +882,7 @@ int main (int argc, char** argv) {
     new_fn("isalnum");
 
     new_fn("fopen");
+    new_fn("fclose");
     new_fn("fgetc");
     new_fn("feof");
 
@@ -869,6 +892,10 @@ int main (int argc, char** argv) {
     new_fn("printf");
 
     program();
+
+    lex_end();
+    sym_end();
+    fclose(output);
 
     return errors != 0;
 }
