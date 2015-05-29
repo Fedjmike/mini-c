@@ -231,7 +231,7 @@ int local_no;
 void sym_init (int max) {
     globals = malloc(ptr_size*max);
     global_no = 0;
-    is_fn = calloc(ptr_size, max);
+    is_fn = calloc(max, ptr_size);
 
     params = malloc(ptr_size*max);
     param_no = 0;
