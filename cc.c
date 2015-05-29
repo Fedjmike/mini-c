@@ -168,6 +168,7 @@ int errors;
 
 void error (char* format) {
     printf("%s:%d: error: ", inputname, curln);
+    /*Accepting an untrusted format string? Naughty!*/
     printf(format, buffer);
     errors++;
 }
