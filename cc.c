@@ -520,14 +520,13 @@ void unary () {
                 error("unanticipated assignment\n");
 
             fputs("pop ebx\n", output);
+            fputs("push dword ptr [ebx]\n", output);
 
             if (see("++"))
                 fputs("add dword ptr [ebx], 1\n", output);
 
             else
                 fputs("sub dword ptr [ebx], 1\n", output);
-
-            fputs("push dword ptr [ebx]\n", output);
 
             lvalue = false;
 
