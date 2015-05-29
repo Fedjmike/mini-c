@@ -846,6 +846,7 @@ int main (int argc, char** argv) {
     sym_init(256);
 
     new_fn("malloc");
+    new_fn("calloc");
     new_fn("free");
     new_fn("atoi");
 
@@ -858,17 +859,14 @@ int main (int argc, char** argv) {
     new_fn("isdigit");
     new_fn("isalnum");
 
-    new_fn("puts");
-    new_fn("printf");
-
-    new_fn("getchar");
-
     new_fn("fopen");
     new_fn("fgetc");
     new_fn("feof");
 
     new_fn("fputs");
     new_fn("fprintf");
+    new_fn("puts");
+    new_fn("printf");
 
     program();
 
