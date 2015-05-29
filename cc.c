@@ -44,9 +44,7 @@ void next_char () {
 }
 
 void eat_char () {
-    buffer = buffer+buflength;
-    buffer[0] = curch;
-    buffer = buffer-buflength;
+    *(buffer+buflength) = curch;
     buflength++;
     next_char();
 }
@@ -150,9 +148,7 @@ void next () {
     } else
         eat_char();
 
-    buffer = buffer+buflength;
-    buffer[0] = 0;
-    buffer = buffer-buflength;
+    *(buffer+buflength) = 0;
     buflength++;
 }
 
@@ -407,8 +403,13 @@ void factor () {
         accept();
 
     } else if (try_match("(")) {
+        int old_lvalue = lvalue;
+        lvalue = false;
+
         expr();
         match(")");
+
+        lvalue = old_lvalue;
 
     } else
         error("expected an expression, found '%s'\n");
