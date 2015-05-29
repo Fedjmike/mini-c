@@ -212,11 +212,9 @@ int try_match (char* look) {
 
 /*==== Symbol table ====*/
 
-char** fns;
-int fn_no;
-
 char** globals;
 int global_no;
+int* is_fn;
 
 char** params;
 int param_no;
@@ -225,11 +223,9 @@ char** locals;
 int local_no;
 
 void sym_init (int max) {
-    fns = malloc(ptr_size*max);
-    fn_no = 0;
-
     globals = malloc(ptr_size*max);
     global_no = 0;
+    is_fn = calloc(ptr_size, max);
 
     params = malloc(ptr_size*max);
     param_no = 0;
@@ -238,14 +234,14 @@ void sym_init (int max) {
     local_no = 0;
 }
 
-void new_fn (char* ident) {
-    fns[fn_no] = strdup(ident);
-    fn_no++;
-}
-
 void new_global (char* ident) {
     globals[global_no] = strdup(ident);
     global_no++;
+}
+
+void new_fn (char* ident) {
+    is_fn[global_no] = true;
+    new_global(ident);
 }
 
 void new_param (char* ident) {
@@ -315,16 +311,12 @@ void expr ();
 
 void factor () {
     if (token == token_ident) {
-        int fn = sym_lookup(fns, fn_no, buffer);
         int global = sym_lookup(globals, global_no, buffer);
         int param = sym_lookup(params, param_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
 
-        if (fn >= 0) {
-            fprintf(output, "push offset _%s\n", fns[fn]);
-
-        } else if (global >= 0) {
-            if (lvalue)
+        if (global >= 0) {
+            if (is_fn[global] || lvalue)
                 fprintf(output, "push offset _%s\n", globals[global]);
 
             else
