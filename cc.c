@@ -507,6 +507,18 @@ void unary () {
         unary();
         fputs("neg dword ptr [esp]\n", output);
 
+    } else if (try_match("*")) {
+        int was_lvalue = lvalue;
+        unary();
+
+        if (was_lvalue)
+            lvalue = true;
+
+        else {
+            fputs("mov ebx, dword ptr [esp]\n", output);
+            fputs("push ebx\n", output);
+        }
+
     } else {
         object();
 
