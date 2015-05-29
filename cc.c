@@ -280,50 +280,11 @@ void new_scope () {
     local_no = 0;
 }
 
-int lookup_fn (char* look) {
+int sym_lookup (char** table, int table_size, char* look) {
     int i = 0;
 
-    while (i < fn_no) {
-        if (!strcmp(fns[i], look))
-            return i;
-
-        i++;
-    }
-
-    return -1;
-}
-
-int lookup_global (char* look) {
-    int i = 0;
-
-    while (i < global_no) {
-        if (!strcmp(globals[i], look))
-            return i;
-
-        i++;
-    }
-
-    return -1;
-}
-
-int lookup_param (char* look) {
-    int i = 0;
-
-    while (i < param_no) {
-        if (!strcmp(params[i], look))
-            return i;
-
-        i++;
-    }
-
-    return -1;
-}
-
-int lookup_local (char* look) {
-    int i = 0;
-
-    while (i < local_no) {
-        if (!strcmp(locals[i], look))
+    while (i < table_size) {
+        if (!strcmp(table[i], look))
             return i;
 
         i++;
@@ -354,10 +315,10 @@ void expr ();
 
 void factor () {
     if (token == token_ident) {
-        int fn = lookup_fn(buffer);
-        int global = lookup_global(buffer);
-        int param = lookup_param(buffer);
-        int local = lookup_local(buffer);
+        int fn = sym_lookup(fns, fn_no, buffer);
+        int global = sym_lookup(globals, global_no, buffer);
+        int param = sym_lookup(params, param_no, buffer);
+        int local = sym_lookup(locals, local_no, buffer);
 
         if (fn >= 0) {
             fprintf(output, "push offset _%s\n", fns[fn]);
