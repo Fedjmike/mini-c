@@ -183,13 +183,6 @@ int see (char* look) {
     return !strcmp(buffer, look);
 }
 
-/*Does the next token imply the start of a declaration?
-  Used for disambiguating between local variable decls
-  and expressions as statements.*/
-int see_decl () {
-    return see("int") || see("char");
-}
-
 int waiting_for (char* look) {
     return !see(look) && !feof(input);
 }
@@ -729,7 +722,7 @@ void line () {
     else if (see("{"))
         block();
 
-    else if (see_decl())
+    else if (see("int") || see("char"))
         decl(decl_local);
 
     else {
