@@ -625,8 +625,31 @@ void expr_1 () {
     }
 }
 
-void expr () {
+void expr_0 () {
     expr_1();
+
+    if (try_match("?")) {
+        int false_branch = new_label();
+        int join = new_label();
+
+        fputs("pop ebx\n", output);
+        fputs("cmp ebx, 0\n", output);
+        fprintf(output, "je _%08d\n", false_branch);
+
+        expr_1();
+        match(":");
+
+        fprintf(output, "jmp _%08d\n", join);
+        fprintf(output, "\t_%08d:\n", false_branch);
+
+        expr_0();
+
+        fprintf(output, "\t_%08d:\n", join);
+    }
+}
+
+void expr () {
+    expr_0();
 
     if (try_match("=")) {
         if (!lvalue)
@@ -634,7 +657,7 @@ void expr () {
 
         lvalue = false;
 
-        expr_1();
+        expr_0();
 
         fputs("pop ebx\n", output);
         fputs("pop ecx\n", output);
