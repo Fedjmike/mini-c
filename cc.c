@@ -356,21 +356,14 @@ void factor () {
             else
                 fprintf(output, "push dword ptr [_%s]\n", globals[global]);
 
-        } else if (param >= 0) {
-            if (lvalue) {
-                fprintf(output, "lea ebx, dword ptr [ebp+%d]\n", param_offset(param));
+        } else if (param >= 0 || local >= 0) {
+            int offset = param >= 0 ? param_offset(param) : -local_offset(local);
+
+            fputs(lvalue ? "lea ebx, " : "push ", output);
+            fprintf(output, "dword ptr [ebp%+d]\n", offset);
+
+            if (lvalue)
                 fputs("push ebx\n", output);
-
-            } else
-                fprintf(output, "push dword ptr [ebp+%d]\n", param_offset(param));
-
-        } else if (local >= 0) {
-            if (lvalue) {
-                fprintf(output, "lea ebx, dword ptr [ebp-%d]\n", local_offset(local));
-                fputs("push ebx\n", output);
-
-            } else
-                fprintf(output, "push dword ptr [ebp-%d]\n", local_offset(local));
 
         } else
             error("no symbol '%s' declared\n");
@@ -468,12 +461,7 @@ void object () {
                 fputs("mov ecx, dword ptr [ecx]\n", output);
 
             fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
-
-            if (lvalue)
-                fputs("push ebx\n", output);
-
-            else
-                fputs("push dword ptr [ebx]\n", output);
+            fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
 
         } else
             break;
@@ -524,12 +512,7 @@ void unary () {
 
             fputs("pop ebx\n", output);
             fputs("push dword ptr [ebx]\n", output);
-
-            if (see("++"))
-                fputs("add dword ptr [ebx], 1\n", output);
-
-            else
-                fputs("sub dword ptr [ebx], 1\n", output);
+            fprintf(output, "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             lvalue = false;
 
@@ -550,16 +533,12 @@ void expr_3 () {
 
         fputs("pop ebx\n", output);
 
-        if (!strcmp(op, "+"))
-            fputs("add dword ptr [esp], ebx\n", output);
-
-        else if (!strcmp(op, "-"))
-            fputs("sub dword ptr [esp], ebx\n", output);
-
-        else {
+        if (!strcmp(op, "*")) {
             fputs("imul ebx, dword ptr [esp]\n", output);
             fputs("mov dword ptr [esp], ebx\n", output);
-        }
+
+        } else
+            fprintf(output, "%s dword ptr [esp], ebx\n", !strcmp(op, "+") ? "add" : "sub");
 
         free(op);
     }
@@ -580,18 +559,12 @@ void expr_2 () {
         int true_label = new_label();
         int join_label = new_label();
 
-        if (!strcmp(op, "=="))
-            fprintf(output, "je _%08d\n", true_label);
+        char* condition = !strcmp(op, "==") ? "e" :
+                          !strcmp(op, "!=") ? "ne" :
+                          !strcmp(op, "<") ? "l" : "ge";
 
-        else if (!strcmp(op, "!="))
-            fprintf(output, "jne _%08d\n", true_label);
-
-        else if (!strcmp(op, "<"))
-            fprintf(output, "jl _%08d\n", true_label);
-
-        else
-            fprintf(output, "jge _%08d\n", true_label);
-
+        fprintf(output, "j%s ", condition);
+        fprintf(output, "_%08d\n", true_label);
         fputs("mov dword ptr [esp], 0\n", output);
         fprintf(output, "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
@@ -609,13 +582,8 @@ void expr_1 () {
         int shortcircuit = new_label();
 
         fputs("cmp dword ptr [esp], 0\n", output);
-
-        if (see("||"))
-            fprintf(output, "jnz _%08d\n", shortcircuit);
-
-        else
-            fprintf(output, "jz _%08d\n", shortcircuit);
-
+        fprintf(output, "j%s ", see("||") ? "nz" : "z");
+        fprintf(output, "_%08d\n", shortcircuit);
         fputs("pop ebx\n", output);
 
         accept();
