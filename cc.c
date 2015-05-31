@@ -44,6 +44,8 @@ void next_char () {
 }
 
 void eat_char () {
+    /*The compiler is typeless, so as a compromise indexing is done
+      in word size jumps, and pointer arithmetic in byte jumps.*/
     *(buffer+buflength) = curch;
     buflength++;
     next_char();
