@@ -542,7 +542,9 @@ void expr_2 () {
     expr_3();
 
     while (see("==") || see("!=") || see("<") || see(">=")) {
-        char* op = strdup(buffer);
+        char* condition = !strcmp(buffer, "==") ? "e" :
+                          !strcmp(buffer, "!=") ? "ne" :
+                          !strcmp(buffer, "<") ? "l" : "ge";
 
         accept();
         expr_3();
@@ -553,10 +555,6 @@ void expr_2 () {
         int true_label = new_label();
         int join_label = new_label();
 
-        char* condition = !strcmp(op, "==") ? "e" :
-                          !strcmp(op, "!=") ? "ne" :
-                          !strcmp(op, "<") ? "l" : "ge";
-
         fprintf(output, "j%s ", condition);
         fprintf(output, "_%08d\n", true_label);
         fprintf(output, "mov dword ptr [esp], 0\n"
@@ -564,8 +562,6 @@ void expr_2 () {
         fprintf(output, "\t_%08d:\n", true_label);
         fprintf(output, "mov dword ptr [esp], 1\n"
                         "\t_%08d:\n", join_label);
-
-        free(op);
     }
 }
 
