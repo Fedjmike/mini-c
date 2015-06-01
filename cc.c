@@ -376,8 +376,8 @@ void factor () {
     } else if (token == token_str) {
         int str = new_label();
 
-        fputs(".section .rodata\n", output);
-        fprintf(output, "_%08d:\n", str);
+        fprintf(output, ".section .rodata\n"
+                        "_%08d:\n", str);
         fprintf(output, ".ascii %s\n", buffer);
         accept();
 
@@ -386,8 +386,8 @@ void factor () {
             accept();
         }
 
-        fputs(".byte 0\n", output);
-        fputs(".section .text\n", output);
+        fputs(".byte 0\n"
+              ".section .text\n", output);
 
         fprintf(output, "push offset _%08d\n", str);
 
@@ -427,19 +427,17 @@ void object () {
 
             /*Reverse the parameters as per cdecl*/
 
-            if (arg_no == 2) {
-                fputs("pop eax\n", output);
-                fputs("pop ebx\n", output);
-                fputs("push eax\n", output);
-                fputs("push ebx\n", output);
+            if (arg_no == 2)
+                fputs("pop eax\n" "pop ebx\n"
+                      "push eax\n" "push ebx\n", output);
 
-            } else if (arg_no == 3) {
-                fputs("mov eax, dword ptr [esp]\n", output);
-                fputs("mov ebx, dword ptr [esp+8]\n", output);
-                fputs("mov dword ptr [esp+8], eax\n", output);
-                fputs("mov dword ptr [esp], ebx\n", output);
+            else if (arg_no == 3)
+                fputs("mov eax, dword ptr [esp]\n"
+                      "mov ebx, dword ptr [esp+8]\n"
+                      "mov dword ptr [esp+8], eax\n"
+                      "mov dword ptr [esp], ebx\n", output);
 
-            } else if (arg_no >= 4)
+            else if (arg_no >= 4)
                 error("too many parameters\n");
 
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
@@ -455,8 +453,8 @@ void object () {
 
             lvalue = was_lvalue;
 
-            fputs("pop ebx\n", output);
-            fputs("pop ecx\n", output);
+            fputs("pop ebx\n"
+                  "pop ecx\n", output);
 
             if (was_lvalue)
                 fputs("mov ecx, dword ptr [ecx]\n", output);
@@ -506,8 +504,8 @@ void unary () {
             if (!lvalue)
                 error("unanticipated assignment\n");
 
-            fputs("pop ebx\n", output);
-            fputs("push dword ptr [ebx]\n", output);
+            fputs("pop ebx\n"
+                  "push dword ptr [ebx]\n", output);
             fprintf(output, "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             lvalue = false;
@@ -530,8 +528,8 @@ void expr_3 () {
         fputs("pop ebx\n", output);
 
         if (!strcmp(op, "*")) {
-            fputs("imul ebx, dword ptr [esp]\n", output);
-            fputs("mov dword ptr [esp], ebx\n", output);
+            fputs("imul ebx, dword ptr [esp]\n"
+                  "mov dword ptr [esp], ebx\n", output);
 
         } else
             fprintf(output, "%s dword ptr [esp], ebx\n", !strcmp(op, "+") ? "add" : "sub");
@@ -549,8 +547,8 @@ void expr_2 () {
         accept();
         expr_3();
 
-        fputs("pop ebx\n", output);
-        fputs("cmp dword ptr [esp], ebx\n", output);
+        fputs("pop ebx\n"
+              "cmp dword ptr [esp], ebx\n", output);
 
         int true_label = new_label();
         int join_label = new_label();
@@ -596,8 +594,8 @@ void expr_0 () {
         int false_branch = new_label();
         int join = new_label();
 
-        fputs("pop ebx\n", output);
-        fputs("cmp ebx, 0\n", output);
+        fputs("pop ebx\n"
+              "cmp ebx, 0\n", output);
         fprintf(output, "je _%08d\n", false_branch);
 
         expr_1();
@@ -623,9 +621,8 @@ void expr () {
 
         expr_0();
 
-        fputs("pop ebx\n", output);
-        fputs("pop ecx\n", output);
-        fputs("mov dword ptr [ecx], ebx\n", output);
+        fputs("pop ebx\n" "pop ecx\n"
+              "mov dword ptr [ecx], ebx\n", output);
     }
 }
 
@@ -640,8 +637,8 @@ void if_branch () {
 
     expr();
 
-    fputs("pop ebx\n", output);
-    fputs("cmp ebx, 0\n", output);
+    fputs("pop ebx\n"
+          "cmp ebx, 0\n", output);
     fprintf(output, "je _%08d\n", false_branch);
 
     match(")");
@@ -668,8 +665,8 @@ void while_loop () {
 
     expr();
 
-    fputs("pop ebx\n", output);
-    fputs("cmp ebx, 0\n", output);
+    fputs("pop ebx\n"
+          "cmp ebx, 0\n", output);
     fprintf(output, "je _%08d\n", break_to);
 
     match(")");
@@ -741,8 +738,8 @@ void function (char* ident) {
     fprintf(output, ".globl _%s\n", ident);
     fprintf(output, "_%s:\n", ident);
 
-    fputs("push ebp\n", output);
-    fputs("mov ebp, esp\n", output);
+    fputs("push ebp\n"
+          "mov ebp, esp\n", output);
 
     /*Body*/
 
@@ -754,9 +751,9 @@ void function (char* ident) {
 
     fprintf(output, "\t_%08d:\n", return_to);
 
-    fputs("mov esp, ebp\n", output);
-    fputs("pop ebp\n", output);
-    fputs("ret\n", output);
+    fputs("mov esp, ebp\n"
+          "pop ebp\n"
+          "ret\n", output);
 }
 
 void decl (int decl_case) {
@@ -850,9 +847,8 @@ void decl (int decl_case) {
     } else {
         if (decl_case == decl_module && !fn) {
             fputs(".section .data\n", output);
-            fprintf(output, "_%s:\n", ident);
             /*Static data defaults to zero if no initializer*/
-            fputs(".quad 0\n", output);
+            fprintf(output, "_%s: .quad 0\n", ident);
             fputs(".section .text\n", output);
         }
     }
