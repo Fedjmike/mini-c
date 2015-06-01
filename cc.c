@@ -493,11 +493,6 @@ void unary () {
         if (was_lvalue)
             lvalue = true;
 
-        else {
-            fputs("mov ebx, dword ptr [esp]\n", output);
-            fputs("push ebx\n", output);
-        }
-
     } else {
         object();
 
