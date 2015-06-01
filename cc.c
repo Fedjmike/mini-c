@@ -89,12 +89,7 @@ void next () {
 
     /*String or character literal*/
     } else if (curch == 39 || curch == '"') {
-        if (curch == '"')
-            token = token_str;
-
-        else
-            token = token_char;
-
+        token = curch == '"' ? token_str : token_char;
         eat_char();
 
         while (curch != buffer[0] && !feof(input)) {
