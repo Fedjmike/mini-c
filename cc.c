@@ -378,12 +378,18 @@ void factor () {
 
         fputs(".section .rodata\n", output);
         fprintf(output, "_%08d:\n", str);
-        fprintf(output, ".asciz %s\n", buffer);
+        fprintf(output, ".ascii %s\n", buffer);
+        accept();
+
+        while (token == token_str) {
+            fprintf(output, ".ascii %s\n", buffer);
+            accept();
+        }
+
+        fputs(".byte 0\n", output);
         fputs(".section .text\n", output);
 
         fprintf(output, "push offset _%08d\n", str);
-
-        accept();
 
     } else if (try_match("(")) {
         int old_lvalue = lvalue;
