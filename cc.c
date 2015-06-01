@@ -345,10 +345,10 @@ void factor () {
 
         if (global >= 0) {
             if (is_fn[global] || lvalue)
-                fprintf(output, "push offset _%s\n", globals[global]);
+                fprintf(output, "push offset %s\n", globals[global]);
 
             else
-                fprintf(output, "push dword ptr [_%s]\n", globals[global]);
+                fprintf(output, "push dword ptr [%s]\n", globals[global]);
 
         } else if (param >= 0 || local >= 0) {
             int offset = param >= 0 ? param_offset(param) : -local_offset(local);
@@ -732,8 +732,8 @@ void line () {
 void function (char* ident) {
     /*Prologue*/
 
-    fprintf(output, ".globl _%s\n", ident);
-    fprintf(output, "_%s:\n", ident);
+    fprintf(output, ".globl %s\n", ident);
+    fprintf(output, "%s:\n", ident);
 
     fputs("push ebp\n"
           "mov ebp, esp\n", output);
@@ -818,7 +818,7 @@ void decl (int decl_case) {
 
         if (decl_case == decl_module) {
             fprintf(output, ".section .data\n"
-                            "_%s:\n", ident);
+                            "%s:\n", ident);
 
             if (token == token_int) {
                 fprintf(output, ".quad %d\n", atoi(buffer));
@@ -844,7 +844,7 @@ void decl (int decl_case) {
         if (decl_case == decl_module && !fn) {
             fputs(".section .data\n", output);
             /*Static data defaults to zero if no initializer*/
-            fprintf(output, "_%s: .quad 0\n", ident);
+            fprintf(output, "%s: .quad 0\n", ident);
             fputs(".section .text\n", output);
         }
     }

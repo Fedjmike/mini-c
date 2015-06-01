@@ -12,8 +12,8 @@ ccself: cc
 selfhost: ccself
 
 selftest: ccself tests/triangular.c
-	ccself tests/triangular.c
-	gcc -m32 a.s -o triangular; triangular 5; [ $$? -eq 15 ]
+	./ccself tests/triangular.c
+	gcc -m32 a.s -o triangular; ./triangular 5; [ $$? -eq 15 ]
 
 clean:
 	rm -f {cc,ccself,triangular}{,.exe} a.s
