@@ -37,7 +37,7 @@ int token_char = 3;
 int token_str = 4;
 
 void next_char () {
-    if (curch == 10)
+    if (curch == '\n')
         curln++;
 
     curch = fgetc(input);
@@ -53,14 +53,14 @@ void eat_char () {
 
 void next () {
     /*Skip whitespace*/
-    while (curch == ' ' || curch == 13 || curch == 10 || curch == 9)
+    while (curch == ' ' || curch == '\r' || curch == '\n' || curch == '\t')
         next_char();
 
     /*Treat preprocessor lines as line comments*/
     if (curch == '#') {
         next_char();
 
-        while (curch != 10 && !feof(input))
+        while (curch != '\n' && !feof(input))
             next_char();
 
         /*Restart the function (to skip subsequent whitespace and pp)*/
@@ -88,12 +88,12 @@ void next () {
             eat_char();
 
     /*String or character literal*/
-    } else if (curch == 39 || curch == '"') {
+    } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
         eat_char();
 
         while (curch != buffer[0] && !feof(input)) {
-            if (curch == 92)
+            if (curch == '\\')
                 eat_char();
 
             eat_char();
@@ -370,7 +370,7 @@ void factor () {
         accept();
 
     } else if (token == token_char) {
-        fprintf(output, "push %d\n", buffer[1]);
+        fprintf(output, "push %s\n", buffer);
         accept();
 
     } else if (token == token_str) {
