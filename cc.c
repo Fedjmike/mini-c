@@ -10,6 +10,7 @@
 
 char* strdup (char* str);
 
+/*No enums :( */
 int true = 1;
 int false = 0;
 
@@ -498,6 +499,7 @@ void unary () {
             lvalue = true;
 
     } else {
+        /*This function call compiles itself*/
         object();
 
         if (see("++") || see("--")) {
@@ -556,7 +558,7 @@ void expr_2 () {
         int join_label = new_label();
 
         fprintf(output, "j%s ", condition);
-        fprintf(output, "_%08d\n", true_label);
+        fprintf(output,      "_%08d\n", true_label);
         fprintf(output, "mov dword ptr [esp], 0\n"
                         "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
@@ -573,7 +575,7 @@ void expr_1 () {
 
         fprintf(output, "cmp dword ptr [esp], 0\n"
                         "j%s ", see("||") ? "nz" : "z");
-        fprintf(output, "_%08d\n", shortcircuit);
+        fprintf(output,      "_%08d\n", shortcircuit);
         fputs("pop ebx\n", output);
 
         accept();
