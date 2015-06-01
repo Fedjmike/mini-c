@@ -475,11 +475,11 @@ void unary () {
         int true_label = new_label();
         int join_label = new_label();
 
-        fputs("cmp dword ptr [esp], 0\n", output);
-        fprintf(output, "je _%08d\n", true_label);
+        fprintf(output, "cmp dword ptr [esp], 0\n"
+                        "je _%08d\n", true_label);
 
-        fputs("mov dword ptr [esp], 0\n", output);
-        fprintf(output, "jmp _%08d\n", join_label);
+        fprintf(output, "mov dword ptr [esp], 0\n"
+                        "jmp _%08d\n", join_label);
 
         fprintf(output, "\t_%08d:\n", true_label);
         fputs("mov dword ptr [esp], 1\n", output);
@@ -504,9 +504,9 @@ void unary () {
             if (!lvalue)
                 error("unanticipated assignment\n");
 
-            fputs("pop ebx\n"
-                  "push dword ptr [ebx]\n", output);
-            fprintf(output, "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
+            fprintf(output, "pop ebx\n"
+                            "push dword ptr [ebx]\n"
+                            "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             lvalue = false;
 
@@ -559,11 +559,11 @@ void expr_2 () {
 
         fprintf(output, "j%s ", condition);
         fprintf(output, "_%08d\n", true_label);
-        fputs("mov dword ptr [esp], 0\n", output);
-        fprintf(output, "jmp _%08d\n", join_label);
+        fprintf(output, "mov dword ptr [esp], 0\n"
+                        "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
-        fputs("mov dword ptr [esp], 1\n", output);
-        fprintf(output, "\t_%08d:\n", join_label);
+        fprintf(output, "mov dword ptr [esp], 1\n"
+                        "\t_%08d:\n", join_label);
 
         free(op);
     }
@@ -575,8 +575,8 @@ void expr_1 () {
     while (see("||") || see("&&")) {
         int shortcircuit = new_label();
 
-        fputs("cmp dword ptr [esp], 0\n", output);
-        fprintf(output, "j%s ", see("||") ? "nz" : "z");
+        fprintf(output, "cmp dword ptr [esp], 0\n"
+                        "j%s ", see("||") ? "nz" : "z");
         fprintf(output, "_%08d\n", shortcircuit);
         fputs("pop ebx\n", output);
 
@@ -594,9 +594,9 @@ void expr_0 () {
         int false_branch = new_label();
         int join = new_label();
 
-        fputs("pop ebx\n"
-              "cmp ebx, 0\n", output);
-        fprintf(output, "je _%08d\n", false_branch);
+        fprintf(output, "pop ebx\n"
+                        "cmp ebx, 0\n"
+                        "je _%08d\n", false_branch);
 
         expr_1();
         match(":");
@@ -637,9 +637,9 @@ void if_branch () {
 
     expr();
 
-    fputs("pop ebx\n"
-          "cmp ebx, 0\n", output);
-    fprintf(output, "je _%08d\n", false_branch);
+    fprintf(output, "pop ebx\n"
+                    "cmp ebx, 0\n"
+                    "je _%08d\n", false_branch);
 
     match(")");
     line();
@@ -665,9 +665,9 @@ void while_loop () {
 
     expr();
 
-    fputs("pop ebx\n"
-          "cmp ebx, 0\n", output);
-    fprintf(output, "je _%08d\n", break_to);
+    fprintf(output, "pop ebx\n"
+                    "cmp ebx, 0\n"
+                    "je _%08d\n", break_to);
 
     match(")");
 
@@ -750,7 +750,6 @@ void function (char* ident) {
     /*Epilogue*/
 
     fprintf(output, "\t_%08d:\n", return_to);
-
     fputs("mov esp, ebp\n"
           "pop ebp\n"
           "ret\n", output);
@@ -821,8 +820,8 @@ void decl (int decl_case) {
             error("cannot initialize a function\n");
 
         if (decl_case == decl_module) {
-            fputs(".section .data\n", output);
-            fprintf(output, "_%s:\n", ident);
+            fprintf(output, ".section .data\n"
+                            "_%s:\n", ident);
 
             if (token == token_int) {
                 fprintf(output, ".quad %d\n", atoi(buffer));
@@ -837,8 +836,8 @@ void decl (int decl_case) {
             expr();
 
             if (decl_case == decl_local) {
-                fputs("pop ebx\n", output);
-                fprintf(output, "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
+                fprintf(output, "pop ebx\n"
+                                "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
 
             } else
                 error("a variable initialization is illegal here\n");
