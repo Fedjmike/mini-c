@@ -382,6 +382,7 @@ void factor () {
         fprintf(output, ".ascii %s\n", buffer);
         accept();
 
+        /*Consecutive string literals are concatenated*/
         while (token == token_str) {
             fprintf(output, ".ascii %s\n", buffer);
             accept();
