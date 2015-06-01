@@ -6,7 +6,6 @@ tests/%: tests/%.c cc
 	gcc -m32 a.s -o $@
 
 ccself: cc
-	rm -f a.s ccself
 	cc cc.c
 	gcc -m32 a.s -o ccself
 
