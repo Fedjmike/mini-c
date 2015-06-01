@@ -8,8 +8,6 @@
 #include <ctype.h>
 #include <stdio.h>
 
-char* strdup (char* str);
-
 /*No enums :( */
 int true = 1;
 int false = 0;
