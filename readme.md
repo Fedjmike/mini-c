@@ -20,6 +20,8 @@ The general philosophy was: only include a feature if it reduces the total code 
 Building and running it
 =======================
 
+    git clone http://github.com/Fedjmike/mini-c
+    cd mini-c
     make selftest
 
 This will first produce `cc` by compiling mini-c with GCC. Then it makes `ccself` by compiling mini-c with `cc`. Finally it makes `test/triangular` using `ccself`, and checks the result. You should get something like this:
@@ -31,7 +33,7 @@ This will first produce `cc` by compiling mini-c with GCC. Then it makes `ccself
     ccself tests/triangular.c
     gcc -m32 a.s -o triangular; triangular 5; [ $? -eq 15 ]
 
-If you are on Windows, you will need to checkout the `windows` branch.
+If you are on Windows, you will need to checkout the `windows` branch. On 64 bit Linux, you may need to `sudo apt-get install gcc-multilib` to be able to compile and run the 32 bit code.
 
 Related
 =======
