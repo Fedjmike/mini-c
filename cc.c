@@ -364,11 +364,7 @@ void factor () {
 
         accept();
 
-    } else if (token == token_int) {
-        fprintf(output, "push %d\n", atoi(buffer));
-        accept();
-
-    } else if (token == token_char) {
+    } else if (token == token_int || token == token_char) {
         fprintf(output, "push %s\n", buffer);
         accept();
 
@@ -377,8 +373,6 @@ void factor () {
 
         fprintf(output, ".section .rodata\n"
                         "_%08d:\n", str);
-        fprintf(output, ".ascii %s\n", buffer);
-        accept();
 
         /*Consecutive string literals are concatenated*/
         while (token == token_str) {
