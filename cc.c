@@ -241,10 +241,13 @@ void table_end (char** table, int table_size) {
 
 void sym_end () {
     table_end(globals, global_no);
+    free(globals);
     free(is_fn);
 
     table_end(params, param_no);
     table_end(locals, local_no);
+    free(params);
+    free(locals);
 }
 
 void new_global (char* ident) {
@@ -285,6 +288,8 @@ int local_offset (int index) {
 
 /*Enter the scope of a new function body*/
 void new_scope () {
+    table_end(params, param_no);
+    table_end(locals, local_no);
     param_no = 0;
     local_no = 0;
 }
