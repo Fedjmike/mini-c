@@ -413,31 +413,33 @@ void object () {
             int arg_no = 0;
 
             if (waiting_for(")")) {
+                int start_label = new_label();
+                int end_label = new_label();
+                int last_label = new_label();
+
+                fprintf(output, "jmp _%08d\n", start_label);
+                fprintf(output, "_%08d:\n", last_label);
                 expr();
+                fprintf(output, "jmp _%08d\n", end_label);
                 arg_no++;
 
                 while (try_match(",")) {
+                    int next_label = new_label();
+
+                    fprintf(output, "_%08d:\n", next_label);
                     expr();
+                    fprintf(output, "jmp _%08d\n", last_label);
                     arg_no++;
+
+                    last_label = next_label;
                 }
+
+                fprintf(output, "_%08d:\n", start_label);
+                fprintf(output, "jmp _%08d\n", last_label);
+                fprintf(output, "_%08d:\n", end_label);
             }
 
             match(")");
-
-            /*Reverse the parameters as per cdecl*/
-
-            if (arg_no == 2)
-                fputs("pop eax\n" "pop ebx\n"
-                      "push eax\n" "push ebx\n", output);
-
-            else if (arg_no == 3)
-                fputs("mov eax, dword ptr [esp]\n"
-                      "mov ebx, dword ptr [esp+8]\n"
-                      "mov dword ptr [esp+8], eax\n"
-                      "mov dword ptr [esp], ebx\n", output);
-
-            else if (arg_no >= 4)
-                error("too many parameters\n");
 
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
             fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
