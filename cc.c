@@ -45,8 +45,7 @@ void next_char () {
 void eat_char () {
     /*The compiler is typeless, so as a compromise indexing is done
       in word size jumps, and pointer arithmetic in byte jumps.*/
-    *(buffer+buflength) = curch;
-    buflength++;
+    *(buffer + buflength++) = curch;
     next_char();
 }
 
@@ -144,8 +143,7 @@ void next () {
     } else
         eat_char();
 
-    *(buffer+buflength) = 0;
-    buflength++;
+    *(buffer + buflength++) = 0;
 }
 
 void lex_init (char* filename, int maxlen) {
@@ -233,10 +231,8 @@ void sym_init (int max) {
 void table_end (char** table, int table_size) {
     int i = 0;
 
-    while (i < table_size) {
-        free(table[i]);
-        i++;
-    }
+    while (i < table_size)
+        free(table[i++]);
 }
 
 void sym_end () {
@@ -251,8 +247,7 @@ void sym_end () {
 }
 
 void new_global (char* ident) {
-    globals[global_no] = strdup(ident);
-    global_no++;
+    globals[global_no++] = strdup(ident);
 }
 
 void new_fn (char* ident) {
@@ -261,15 +256,12 @@ void new_fn (char* ident) {
 }
 
 void new_param (char* ident) {
-    params[param_no] = strdup(ident);
-    param_no++;
+    params[param_no++] = strdup(ident);
 }
 
 int new_local (char* ident) {
     locals[local_no] = strdup(ident);
-    int index = local_no;
-    local_no++;
-    return index;
+    return local_no++;
 }
 
 int param_offset (int index) {
@@ -297,12 +289,9 @@ void new_scope () {
 int sym_lookup (char** table, int table_size, char* look) {
     int i = 0;
 
-    while (i < table_size) {
-        if (!strcmp(table[i], look))
-            return i;
-
-        i++;
-    }
+    while (i < table_size)
+        if (!strcmp(table[i++], look))
+            return i-1;
 
     return -1;
 }
@@ -316,9 +305,7 @@ int return_to;
 int break_to;
 
 int new_label () {
-    int label = label_no;
-    label_no++;
-    return label;
+    return label_no++;
 }
 
 /*==== One-pass parser and code generator ====*/
