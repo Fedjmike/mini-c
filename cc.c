@@ -343,10 +343,20 @@ void expr ();
   lvalue, which greatly restricts the use of '++'.*/
 
 void factor () {
+    lvalue = false;
+
     if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
         int param = sym_lookup(params, param_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
+
+        if (!global && !param && !local)
+            error("no symbol '%s' declared\n");
+
+        accept();
+
+        if (see("=") || see("++") || see("--"))
+            lvalue = true;
 
         if (global >= 0) {
             if (is_fn[global] || lvalue)
@@ -362,11 +372,7 @@ void factor () {
 
             if (lvalue)
                 fputs("push ebx\n", output);
-
-        } else
-            error("no symbol '%s' declared\n");
-
-        accept();
+        }
 
     } else if (token == token_int || token == token_char) {
         fprintf(output, "push %s\n", buffer);
@@ -390,13 +396,8 @@ void factor () {
         fprintf(output, "push offset _%08d\n", str);
 
     } else if (try_match("(")) {
-        int old_lvalue = lvalue;
-        lvalue = false;
-
         expr();
         match(")");
-
-        lvalue = old_lvalue;
 
     } else
         error("expected an expression, found '%s'\n");
@@ -407,8 +408,6 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
-            lvalue = false;
-
             int arg_no = 0;
 
             if (waiting_for(")")) {
@@ -445,19 +444,14 @@ void object () {
             fputs("push eax\n", output);
 
         } else if (try_match("[")) {
-            int was_lvalue = lvalue;
-            lvalue = false;
-
             expr();
             match("]");
-
-            lvalue = was_lvalue;
 
             fputs("pop ebx\n"
                   "pop ecx\n", output);
 
-            if (was_lvalue)
-                fputs("mov ecx, dword ptr [ecx]\n", output);
+            if (see("=") || see("++") || see("--"))
+                lvalue = true;
 
             fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
             fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
@@ -491,11 +485,14 @@ void unary () {
         fputs("neg dword ptr [esp]\n", output);
 
     } else if (try_match("*")) {
-        int was_lvalue = lvalue;
         unary();
 
-        if (was_lvalue)
+        if (see("=") || see("++") || see("--"))
             lvalue = true;
+
+        else
+            fputs("pop ebx\n"
+                  "push dword ptr [ebx]", output);
 
     } else {
         /*This function call compiles itself*/
@@ -718,11 +715,8 @@ void line () {
         } else if (try_match("break")) {
             fprintf(output, "jmp _%08d\n", break_to);
 
-        } else if (waiting_for(";")) {
-            lvalue = true;
+        } else if (waiting_for(";"))
             expr();
-            lvalue = false;
-        }
 
         match(";");
     }
@@ -853,7 +847,6 @@ void program () {
     fputs(".intel_syntax noprefix\n", output);
 
     errors = 0;
-    lvalue = false;
 
     while (!feof(input))
         decl(decl_module);
