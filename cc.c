@@ -358,8 +358,7 @@ void factor () {
         } else if (param >= 0 || local >= 0) {
             int offset = param >= 0 ? param_offset(param) : -local_offset(local);
 
-            fputs(lvalue ? "lea ebx, " : "push ", output);
-            fprintf(output, "dword ptr [ebp%+d]\n", offset);
+            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offset);
 
             if (lvalue)
                 fputs("push ebx\n", output);
@@ -557,8 +556,7 @@ void expr_2 () {
         int true_label = new_label();
         int join_label = new_label();
 
-        fprintf(output, "j%s ", condition);
-        fprintf(output,      "_%08d\n", true_label);
+        fprintf(output, "j%s _%08d\n", condition, true_label);
         fprintf(output, "mov dword ptr [esp], 0\n"
                         "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
@@ -818,17 +816,14 @@ void decl (int decl_case) {
             error("cannot initialize a function\n");
 
         if (decl_case == decl_module) {
-            fprintf(output, ".section .data\n"
-                            "%s:\n", ident);
-
             if (token == token_int) {
-                fprintf(output, ".quad %d\n", atoi(buffer));
+                fprintf(output, ".section .data\n"
+                                "_%s: .quad %d\n", ident, atoi(buffer));
+                fputs(".section .text\n", output);
                 accept();
 
             } else
                 error("expected a constant expression, found '%s'\n");
-
-            fputs(".section .text\n", output);
 
         } else {
             expr();
