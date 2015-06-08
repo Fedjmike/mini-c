@@ -558,8 +558,7 @@ void expr_1 () {
         int shortcircuit = new_label();
 
         fprintf(output, "cmp dword ptr [esp], 0\n"
-                        "j%s ", see("||") ? "nz" : "z");
-        fprintf(output,      "_%08d\n", shortcircuit);
+                        "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
         fputs("pop ebx\n", output);
 
         accept();
