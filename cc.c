@@ -818,7 +818,7 @@ void decl (int decl_case) {
         if (decl_case == decl_module) {
             if (token == token_int) {
                 fprintf(output, ".section .data\n"
-                                "_%s: .quad %d\n", ident, atoi(buffer));
+                                "%s: .quad %d\n", ident, atoi(buffer));
                 fputs(".section .text\n", output);
                 accept();
 
