@@ -337,10 +337,12 @@ void expr ();
 
 /*Regarding lvalues and assignment:
 
-  If the global lvalue flag is set, then symbol addresses are put
-  on the stack, not their values. The compiler can only guess
-  ahead of time whether an expression is going to be used as an
-  lvalue, which greatly restricts the use of '++'.*/
+  An expression which can return an lvalue looks head for an
+  assignment operator. If it finds one, then it pushes the
+  address of its result. Otherwise, it dereferences it.
+
+  The global lvalue flag tracks whether the last operand was an
+  lvalue; assignment operators check and reset it.*/
 
 void factor () {
     lvalue = false;
@@ -500,7 +502,7 @@ void unary () {
 
         if (see("++") || see("--")) {
             if (!lvalue)
-                error("unanticipated assignment\n");
+                error("assignment operator '%s' requires a modifiable object\n");
 
             fprintf(output, "pop ebx\n"
                             "push dword ptr [ebx]\n"
@@ -608,7 +610,7 @@ void expr () {
 
     if (try_match("=")) {
         if (!lvalue)
-            error("unanticipated assignment\n");
+            error("assignment requires a modifiable object\n");
 
         lvalue = false;
 
