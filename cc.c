@@ -498,7 +498,6 @@ void unary () {
             lvalue = false;
 
             accept();
-
         }
     }
 }
