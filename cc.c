@@ -45,8 +45,7 @@ void next_char () {
 void eat_char () {
     /*The compiler is typeless, so as a compromise indexing is done
       in word size jumps, and pointer arithmetic in byte jumps.*/
-    *(buffer+buflength) = curch;
-    buflength++;
+    *(buffer + buflength++) = curch;
     next_char();
 }
 
@@ -144,8 +143,7 @@ void next () {
     } else
         eat_char();
 
-    *(buffer+buflength) = 0;
-    buflength++;
+    *(buffer + buflength++) = 0;
 }
 
 void lex_init (char* filename, int maxlen) {
@@ -233,10 +231,8 @@ void sym_init (int max) {
 void table_end (char** table, int table_size) {
     int i = 0;
 
-    while (i < table_size) {
-        free(table[i]);
-        i++;
-    }
+    while (i < table_size)
+        free(table[i++]);
 }
 
 void sym_end () {
@@ -251,8 +247,7 @@ void sym_end () {
 }
 
 void new_global (char* ident) {
-    globals[global_no] = strdup(ident);
-    global_no++;
+    globals[global_no++] = strdup(ident);
 }
 
 void new_fn (char* ident) {
@@ -261,15 +256,12 @@ void new_fn (char* ident) {
 }
 
 void new_param (char* ident) {
-    params[param_no] = strdup(ident);
-    param_no++;
+    params[param_no++] = strdup(ident);
 }
 
 int new_local (char* ident) {
     locals[local_no] = strdup(ident);
-    int index = local_no;
-    local_no++;
-    return index;
+    return local_no++;
 }
 
 int param_offset (int index) {
@@ -297,12 +289,9 @@ void new_scope () {
 int sym_lookup (char** table, int table_size, char* look) {
     int i = 0;
 
-    while (i < table_size) {
-        if (!strcmp(table[i], look))
-            return i;
-
-        i++;
-    }
+    while (i < table_size)
+        if (!strcmp(table[i++], look))
+            return i-1;
 
     return -1;
 }
@@ -316,9 +305,7 @@ int return_to;
 int break_to;
 
 int new_label () {
-    int label = label_no;
-    label_no++;
-    return label;
+    return label_no++;
 }
 
 /*==== One-pass parser and code generator ====*/
@@ -337,16 +324,28 @@ void expr ();
 
 /*Regarding lvalues and assignment:
 
-  If the global lvalue flag is set, then symbol addresses are put
-  on the stack, not their values. The compiler can only guess
-  ahead of time whether an expression is going to be used as an
-  lvalue, which greatly restricts the use of '++'.*/
+  An expression which can return an lvalue looks head for an
+  assignment operator. If it finds one, then it pushes the
+  address of its result. Otherwise, it dereferences it.
+
+  The global lvalue flag tracks whether the last operand was an
+  lvalue; assignment operators check and reset it.*/
 
 void factor () {
+    lvalue = false;
+
     if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
         int param = sym_lookup(params, param_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
+
+        if (!global && !param && !local)
+            error("no symbol '%s' declared\n");
+
+        accept();
+
+        if (see("=") || see("++") || see("--"))
+            lvalue = true;
 
         if (global >= 0) {
             if (is_fn[global] || lvalue)
@@ -358,16 +357,11 @@ void factor () {
         } else if (param >= 0 || local >= 0) {
             int offset = param >= 0 ? param_offset(param) : -local_offset(local);
 
-            fputs(lvalue ? "lea ebx, " : "push ", output);
-            fprintf(output, "dword ptr [ebp%+d]\n", offset);
+            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offset);
 
             if (lvalue)
                 fputs("push ebx\n", output);
-
-        } else
-            error("no symbol '%s' declared\n");
-
-        accept();
+        }
 
     } else if (token == token_int || token == token_char) {
         fprintf(output, "push %s\n", buffer);
@@ -391,13 +385,8 @@ void factor () {
         fprintf(output, "push offset _%08d\n", str);
 
     } else if (try_match("(")) {
-        int old_lvalue = lvalue;
-        lvalue = false;
-
         expr();
         match(")");
-
-        lvalue = old_lvalue;
 
     } else
         error("expected an expression, found '%s'\n");
@@ -408,8 +397,6 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
-            lvalue = false;
-
             int arg_no = 0;
 
             if (waiting_for(")")) {
@@ -446,19 +433,14 @@ void object () {
             fputs("push eax\n", output);
 
         } else if (try_match("[")) {
-            int was_lvalue = lvalue;
-            lvalue = false;
-
             expr();
             match("]");
-
-            lvalue = was_lvalue;
 
             fputs("pop ebx\n"
                   "pop ecx\n", output);
 
-            if (was_lvalue)
-                fputs("mov ecx, dword ptr [ecx]\n", output);
+            if (see("=") || see("++") || see("--"))
+                lvalue = true;
 
             fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
             fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
@@ -492,11 +474,14 @@ void unary () {
         fputs("neg dword ptr [esp]\n", output);
 
     } else if (try_match("*")) {
-        int was_lvalue = lvalue;
         unary();
 
-        if (was_lvalue)
+        if (see("=") || see("++") || see("--"))
             lvalue = true;
+
+        else
+            fputs("pop ebx\n"
+                  "push dword ptr [ebx]", output);
 
     } else {
         /*This function call compiles itself*/
@@ -504,7 +489,7 @@ void unary () {
 
         if (see("++") || see("--")) {
             if (!lvalue)
-                error("unanticipated assignment\n");
+                error("assignment operator '%s' requires a modifiable object\n");
 
             fprintf(output, "pop ebx\n"
                             "push dword ptr [ebx]\n"
@@ -513,7 +498,6 @@ void unary () {
             lvalue = false;
 
             accept();
-
         }
     }
 }
@@ -557,8 +541,7 @@ void expr_2 () {
         int true_label = new_label();
         int join_label = new_label();
 
-        fprintf(output, "j%s ", condition);
-        fprintf(output,      "_%08d\n", true_label);
+        fprintf(output, "j%s _%08d\n", condition, true_label);
         fprintf(output, "mov dword ptr [esp], 0\n"
                         "jmp _%08d\n", join_label);
         fprintf(output, "\t_%08d:\n", true_label);
@@ -574,8 +557,7 @@ void expr_1 () {
         int shortcircuit = new_label();
 
         fprintf(output, "cmp dword ptr [esp], 0\n"
-                        "j%s ", see("||") ? "nz" : "z");
-        fprintf(output,      "_%08d\n", shortcircuit);
+                        "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
         fputs("pop ebx\n", output);
 
         accept();
@@ -613,7 +595,7 @@ void expr () {
 
     if (try_match("=")) {
         if (!lvalue)
-            error("unanticipated assignment\n");
+            error("assignment requires a modifiable object\n");
 
         lvalue = false;
 
@@ -720,11 +702,8 @@ void line () {
         } else if (try_match("break")) {
             fprintf(output, "jmp _%08d\n", break_to);
 
-        } else if (waiting_for(";")) {
-            lvalue = true;
+        } else if (waiting_for(";"))
             expr();
-            lvalue = false;
-        }
 
         match(";");
     }
@@ -818,17 +797,14 @@ void decl (int decl_case) {
             error("cannot initialize a function\n");
 
         if (decl_case == decl_module) {
-            fprintf(output, ".section .data\n"
-                            "_%s:\n", ident);
-
             if (token == token_int) {
-                fprintf(output, ".quad %d\n", atoi(buffer));
+                fprintf(output, ".section .data\n"
+                                "_%s: .quad %d\n", ident, atoi(buffer));
+                fputs(".section .text\n", output);
                 accept();
 
             } else
                 error("expected a constant expression, found '%s'\n");
-
-            fputs(".section .text\n", output);
 
         } else {
             expr();
@@ -858,7 +834,6 @@ void program () {
     fputs(".intel_syntax noprefix\n", output);
 
     errors = 0;
-    lvalue = false;
 
     while (!feof(input))
         decl(decl_module);
