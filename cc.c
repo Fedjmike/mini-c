@@ -506,21 +506,19 @@ void expr_3 () {
     unary();
 
     while (see("+") || see("-") || see("*")) {
-        char* op = strdup(buffer);
+        char* instr = see("*") ? 0 : see("+") ? "add" : "sub";
 
         accept();
         unary();
 
         fputs("pop ebx\n", output);
 
-        if (!strcmp(op, "*")) {
+        if (instr == 0) {
             fputs("imul ebx, dword ptr [esp]\n"
                   "mov dword ptr [esp], ebx\n", output);
 
         } else
-            fprintf(output, "%s dword ptr [esp], ebx\n", !strcmp(op, "+") ? "add" : "sub");
-
-        free(op);
+            fprintf(output, "%s dword ptr [esp], ebx\n", instr);
     }
 }
 
