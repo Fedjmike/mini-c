@@ -267,8 +267,8 @@ int new_local (char* ident) {
 int param_offset (int index) {
     /*At and above the base pointer, in order, are:
        1. the old base pointer, [ebp]
-       2. the return address, [ebp-W]
-       3. the first parameter, [ebp-2W]
+       2. the return address, [ebp+W]
+       3. the first parameter, [ebp+2W]
          and so on*/
     return word_size*(index+2);
 }
