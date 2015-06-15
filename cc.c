@@ -275,7 +275,7 @@ int param_offset (int index) {
 
 int local_offset (int index) {
     /*The first local variable is directly below the base pointer*/
-    return word_size*(index+1);
+    return -word_size*(index+1);
 }
 
 /*Enter the scope of a new function body*/
@@ -355,7 +355,7 @@ void factor () {
                 fprintf(output, "push dword ptr [%s]\n", globals[global]);
 
         } else if (param >= 0 || local >= 0) {
-            int offset = param >= 0 ? param_offset(param) : -local_offset(local);
+            int offset = param >= 0 ? param_offset(param) : local_offset(local);
 
             fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offset);
 
@@ -811,7 +811,7 @@ void decl (int decl_case) {
 
             if (decl_case == decl_local) {
                 fprintf(output, "pop ebx\n"
-                                "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
+                                "mov dword ptr [ebp%+d], ebx\n", local_offset(local));
 
             } else
                 error("a variable initialization is illegal here\n");
