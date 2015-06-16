@@ -445,19 +445,10 @@ void unary () {
         /*Recurse to allow chains of unary operations, LIFO order*/
         unary();
 
-        int true_label = new_label();
-        int join_label = new_label();
-
-        fprintf(output, "cmp dword ptr [esp], 0\n"
-                        "je _%08d\n", true_label);
-
-        fprintf(output, "mov dword ptr [esp], 0\n"
-                        "jmp _%08d\n", join_label);
-
-        fprintf(output, "\t_%08d:\n", true_label);
-        fputs("mov dword ptr [esp], 1\n", output);
-
-        fprintf(output, "\t_%08d:\n", join_label);
+        fputs("cmp dword ptr [esp], 0\n"
+              "mov ebx, 0\n"
+              "sete bl\n"
+              "mov dword ptr [esp], ebx\n", output);
 
     } else if (try_match("-")) {
         unary();
