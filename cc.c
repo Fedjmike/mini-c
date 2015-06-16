@@ -56,8 +56,6 @@ void next () {
 
     /*Treat preprocessor lines as line comments*/
     if (curch == '#') {
-        next_char();
-
         while (curch != '\n' && !feof(input))
             next_char();
 
@@ -72,7 +70,6 @@ void next () {
     /*Identifier or keyword*/
     if (isalpha(curch)) {
         token = token_ident;
-        eat_char();
 
         while ((isalnum(curch) || curch == '_') && !feof(input))
             eat_char();
