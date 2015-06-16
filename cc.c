@@ -510,18 +510,11 @@ void expr_2 () {
         accept();
         expr_3();
 
-        fputs("pop ebx\n"
-              "cmp dword ptr [esp], ebx\n", output);
-
-        int true_label = new_label();
-        int join_label = new_label();
-
-        fprintf(output, "j%s _%08d\n", condition, true_label);
-        fprintf(output, "mov dword ptr [esp], 0\n"
-                        "jmp _%08d\n", join_label);
-        fprintf(output, "\t_%08d:\n", true_label);
-        fprintf(output, "mov dword ptr [esp], 1\n"
-                        "\t_%08d:\n", join_label);
+        fprintf(output, "pop ebx\n"
+                        "mov ecx, 0\n"
+                        "cmp dword ptr [esp], ebx\n"
+                        "set%s cl\n", condition);
+        fputs("mov dword ptr [esp], ecx\n", output);
     }
 }
 
