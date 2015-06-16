@@ -630,7 +630,7 @@ void while_loop () {
     break_to = old_break_to;
 }
 
-void decl (int decl_case);
+void decl (int kind);
 
 /*See decl() implementation*/
 int decl_module = 1;
@@ -695,7 +695,7 @@ void function (char* ident) {
           "ret\n", output);
 }
 
-void decl (int decl_case) {
+void decl (int kind) {
     /*A C declaration comes in three forms:
        - Local decls, which end in a semicolon and can have an initializer.
        - Parameter decls, which do not and cannot.
@@ -715,7 +715,7 @@ void decl (int decl_case) {
 
     /*Functions*/
     if (try_match("(")) {
-        if (decl_case == decl_module)
+        if (kind == decl_module)
             new_scope();
 
         /*Params*/
@@ -731,7 +731,7 @@ void decl (int decl_case) {
 
         /*Body*/
         if (see("{")) {
-            require(decl_case == decl_module, "a function implementation is illegal here\n");
+            require(kind == decl_module, "a function implementation is illegal here\n");
 
             fn_impl = true;
             function(ident);
@@ -739,10 +739,10 @@ void decl (int decl_case) {
 
     /*Add it to the symbol table*/
     } else {
-        if (decl_case == decl_param) {
+        if (kind == decl_param) {
             new_param(ident);
 
-        } else if (decl_case == decl_local) {
+        } else if (kind == decl_local) {
             local = new_local(ident);
             fprintf(output, "sub esp, %d\n", word_size);
 
@@ -754,7 +754,7 @@ void decl (int decl_case) {
     if (try_match("=")) {
         require(fn == 0, "cannot initialize a function\n");
 
-        if (decl_case == decl_module) {
+        if (kind == decl_module) {
             if (token == token_int) {
                 fprintf(output, ".section .data\n"
                                 "%s: .quad %d\n", ident, atoi(buffer));
@@ -767,7 +767,7 @@ void decl (int decl_case) {
         } else {
             expr();
 
-            if (decl_case == decl_local) {
+            if (kind == decl_local) {
                 fprintf(output, "pop ebx\n"
                                 "mov dword ptr [ebp%+d], ebx\n", offsets[local]);
 
@@ -776,7 +776,7 @@ void decl (int decl_case) {
         }
 
     } else {
-        if (decl_case == decl_module && !fn) {
+        if (kind == decl_module && !fn) {
             fputs(".section .data\n", output);
             /*Static data defaults to zero if no initializer*/
             fprintf(output, "%s: .quad 0\n", ident);
@@ -784,7 +784,7 @@ void decl (int decl_case) {
         }
     }
 
-    if (!fn_impl && decl_case != decl_param)
+    if (!fn_impl && kind != decl_param)
         match(";");
 }
 
