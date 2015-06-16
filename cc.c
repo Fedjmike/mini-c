@@ -632,20 +632,27 @@ void while_loop () {
     int old_break_to = break_to;
     break_to = new_label();
 
-    match("while");
-    match("(");
-
     fprintf(output, "\t_%08d:\n", loop_to);
 
+    int do_while = try_match("do");
+
+    if (do_while)
+        line();
+
+    match("while");
+    match("(");
     expr();
+    match(")");
 
     fprintf(output, "pop ebx\n"
                     "cmp ebx, 0\n"
                     "je _%08d\n", break_to);
 
-    match(")");
+    if (do_while)
+        match(";");
 
-    line();
+    else
+        line();
 
     fprintf(output, "jmp _%08d\n", loop_to);
     fprintf(output, "\t_%08d:\n", break_to);
@@ -665,7 +672,7 @@ void line () {
     if (see("if"))
         if_branch();
 
-    else if (see("while"))
+    else if (see("while") || see("do"))
         while_loop();
 
     else if (see("int") || see("char"))
