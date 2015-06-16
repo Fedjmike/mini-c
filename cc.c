@@ -312,6 +312,13 @@ int new_label () {
 
 int lvalue;
 
+void needs_lvalue (char* msg) {
+    if (!lvalue)
+        error(msg);
+
+    lvalue = false;
+}
+
 void expr ();
 
 /*The code generator for expressions works by placing the results
@@ -488,15 +495,11 @@ void unary () {
         object();
 
         if (see("++") || see("--")) {
-            if (!lvalue)
-                error("assignment operator '%s' requires a modifiable object\n");
-
             fprintf(output, "pop ebx\n"
                             "push dword ptr [ebx]\n"
                             "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
-            lvalue = false;
-
+            needs_lvalue("assignment operator '%s' requires a modifiable object\n");
             accept();
         }
     }
@@ -592,11 +595,7 @@ void expr () {
     expr_0();
 
     if (try_match("=")) {
-        if (!lvalue)
-            error("assignment requires a modifiable object\n");
-
-        lvalue = false;
-
+        needs_lvalue("assignment requires a modifiable object\n");
         expr_0();
 
         fputs("pop ebx\n" "pop ecx\n"
