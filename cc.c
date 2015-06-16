@@ -503,9 +503,8 @@ void expr_2 () {
     expr_3();
 
     while (see("==") || see("!=") || see("<") || see(">=")) {
-        char* condition = !strcmp(buffer, "==") ? "e" :
-                          !strcmp(buffer, "!=") ? "ne" :
-                          !strcmp(buffer, "<") ? "l" : "ge";
+        char* condition = see("==") ? "e" : see("!=") ? "ne" :
+                          see("<") ? "l" : "ge";
 
         accept();
         expr_3();
@@ -811,11 +810,10 @@ int main (int argc, char** argv) {
 
     sym_init(256);
 
-    char* std_fns;
     /*No arrays? Fine! A 0xFFFFFF terminated string of null terminated strings will do.
       A negative-terminated null-terminated strings string, if you will*/
-    std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0feof\0fputs\0fprintf\0puts\0printf\0"
-              "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
+    char* std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0feof\0fputs\0fprintf\0puts\0printf\0"
+                    "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
 
     /*Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
       (char) 0xFF == -1, (int) 0xFFFFFF == -1*/
