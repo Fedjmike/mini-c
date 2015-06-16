@@ -654,17 +654,6 @@ void while_loop () {
     break_to = old_break_to;
 }
 
-void block () {
-    if (try_match("{")) {
-        while (waiting_for("}"))
-            line();
-
-        match("}");
-
-    } else
-        line();
-}
-
 void decl (int decl_case);
 
 /*See decl() implementation*/
@@ -679,13 +668,16 @@ void line () {
     else if (see("while"))
         while_loop();
 
-    else if (see("{"))
-        block();
-
     else if (see("int") || see("char"))
         decl(decl_local);
 
-    else {
+    else if (try_match("{")) {
+        while (waiting_for("}"))
+            line();
+
+        match("}");
+
+    } else {
         if (try_match("return")) {
             if (waiting_for(";")) {
                 expr();
@@ -716,7 +708,7 @@ void function (char* ident) {
 
     return_to = new_label();
 
-    block();
+    line();
 
     /*Epilogue*/
 
