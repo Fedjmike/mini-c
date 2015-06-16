@@ -207,11 +207,10 @@ char** globals;
 int global_no;
 int* is_fn;
 
-char** params;
-int param_no;
-
 char** locals;
 int local_no;
+int param_no;
+int* offsets;
 
 void sym_init (int max) {
     globals = malloc(ptr_size*max);
@@ -219,10 +218,9 @@ void sym_init (int max) {
     is_fn = calloc(max, ptr_size);
 
     params = malloc(ptr_size*max);
-    param_no = 0;
-
-    locals = malloc(ptr_size*max);
     local_no = 0;
+    param_no = 0;
+    offsets = calloc(max, word_size);
 }
 
 void table_end (char** table, int table_size) {
@@ -237,10 +235,9 @@ void sym_end () {
     free(globals);
     free(is_fn);
 
-    table_end(params, param_no);
     table_end(locals, local_no);
-    free(params);
     free(locals);
+    free(offsets);
 }
 
 void new_global (char* ident) {
@@ -252,35 +249,31 @@ void new_fn (char* ident) {
     new_global(ident);
 }
 
-void new_param (char* ident) {
-    params[param_no++] = strdup(ident);
-}
-
 int new_local (char* ident) {
+    int var_index = local_no - param_no;
+
     locals[local_no] = strdup(ident);
+    /*The first local variable is directly below the base pointer*/
+    offsets[local_no] = -word_size*(var_index+1);
     return local_no++;
 }
 
-int param_offset (int index) {
+void new_param (char* ident) {
+    int local = new_local(ident);
+
     /*At and above the base pointer, in order, are:
        1. the old base pointer, [ebp]
        2. the return address, [ebp+W]
        3. the first parameter, [ebp+2W]
          and so on*/
-    return word_size*(index+2);
-}
-
-int local_offset (int index) {
-    /*The first local variable is directly below the base pointer*/
-    return -word_size*(index+1);
+    offsets[local] = word_size*(2 + param_no++);
 }
 
 /*Enter the scope of a new function body*/
 void new_scope () {
-    table_end(params, param_no);
     table_end(locals, local_no);
-    param_no = 0;
     local_no = 0;
+    param_no = 0;
 }
 
 int sym_lookup (char** table, int table_size, char* look) {
@@ -340,10 +333,9 @@ void factor () {
 
     if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
-        int param = sym_lookup(params, param_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
 
-        if (!global && !param && !local)
+        if (!global && !local)
             error("no symbol '%s' declared\n");
 
         accept();
@@ -358,10 +350,8 @@ void factor () {
             else
                 fprintf(output, "push dword ptr [%s]\n", globals[global]);
 
-        } else if (param >= 0 || local >= 0) {
-            int offset = param >= 0 ? param_offset(param) : local_offset(local);
-
-            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offset);
+        } else if (local >= 0) {
+            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offsets[local]);
 
             if (lvalue)
                 fputs("push ebx\n", output);
@@ -797,7 +787,7 @@ void decl (int decl_case) {
 
             if (decl_case == decl_local) {
                 fprintf(output, "pop ebx\n"
-                                "mov dword ptr [ebp%+d], ebx\n", local_offset(local));
+                                "mov dword ptr [ebp%+d], ebx\n", offsets[local]);
 
             } else
                 error("a variable initialization is illegal here\n");
