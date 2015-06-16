@@ -344,8 +344,8 @@ void factor () {
             lvalue = true;
 
         if (global >= 0) {
-            char* format = is_fn[global] || lvalue ? "push offset %s\n" : "push dword ptr [%s]\n";
-            fprintf(output, format, globals[global]);
+            char* by_ref = is_fn[global] || lvalue ? "offset " : "";
+            fprintf(output, "push %s%s\n", by_ref, globals[global]);
 
         } else if (local >= 0) {
             fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offsets[local]);
