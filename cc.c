@@ -662,6 +662,7 @@ void line () {
             }
 
         } else if (try_match("break")) {
+            require(break_to != 0, "break must occur within a loop");
             fprintf(output, "jmp _%08d\n", break_to);
 
         } else if (waiting_for(";"))
