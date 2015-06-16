@@ -170,6 +170,11 @@ void error (char* format) {
     errors++;
 }
 
+void require (int condition, char* format) {
+    if (!condition)
+        error(format);
+}
+
 int see (char* look) {
     return !strcmp(buffer, look);
 }
@@ -335,9 +340,7 @@ void factor () {
         int global = sym_lookup(globals, global_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
 
-        if (!global && !local)
-            error("no symbol '%s' declared\n");
-
+        require(global >= 0 || local >= 0, "no symbol '%s' declared\n");
         accept();
 
         if (see("=") || see("++") || see("--"))
@@ -727,8 +730,7 @@ void decl (int decl_case) {
 
         /*Body*/
         if (see("{")) {
-            if (decl_case != decl_module)
-                error("a function implementation is illegal here\n");
+            require(decl_case == decl_module, "a function implementation is illegal here\n");
 
             fn_impl = true;
             function(ident);
@@ -749,8 +751,7 @@ void decl (int decl_case) {
 
     /*Initialization*/
     if (try_match("=")) {
-        if (fn)
-            error("cannot initialize a function\n");
+        require(fn == 0, "cannot initialize a function\n");
 
         if (decl_case == decl_module) {
             if (token == token_int) {
