@@ -77,7 +77,6 @@ void next () {
     /*Integer literal*/
     } else if (isdigit(curch)) {
         token = token_int;
-        eat_char();
 
         while (isdigit(curch) && !feof(input))
             eat_char();
@@ -274,7 +273,7 @@ void new_param (char* ident) {
     offsets[local] = word_size*(2 + param_no++);
 }
 
-/*Enter the scope of a new function body*/
+/*Enter the scope of a new function*/
 void new_scope () {
     table_end(locals, local_no);
     local_no = 0;
@@ -726,7 +725,6 @@ void decl (int kind) {
         match(")");
 
         new_fn(ident);
-
         fn = true;
 
         /*Body*/
