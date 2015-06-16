@@ -406,27 +406,23 @@ void object () {
             if (waiting_for(")")) {
                 int start_label = new_label();
                 int end_label = new_label();
-                int last_label = new_label();
+                int prev_label = end_label;
 
                 fprintf(output, "jmp _%08d\n", start_label);
-                fprintf(output, "_%08d:\n", last_label);
-                expr();
-                fprintf(output, "jmp _%08d\n", end_label);
-                arg_no++;
 
-                while (try_match(",")) {
+                do {
                     int next_label = new_label();
 
                     fprintf(output, "_%08d:\n", next_label);
                     expr();
-                    fprintf(output, "jmp _%08d\n", last_label);
+                    fprintf(output, "jmp _%08d\n", prev_label);
                     arg_no++;
 
-                    last_label = next_label;
-                }
+                    prev_label = next_label;
+                } while (try_match(","));
 
                 fprintf(output, "_%08d:\n", start_label);
-                fprintf(output, "jmp _%08d\n", last_label);
+                fprintf(output, "jmp _%08d\n", prev_label);
                 fprintf(output, "_%08d:\n", end_label);
             }
 
@@ -749,12 +745,9 @@ void decl (int decl_case) {
             new_scope();
 
         /*Params*/
-        if (waiting_for(")")) {
+        if (waiting_for(")")) do {
             decl(decl_param);
-
-            while (try_match(","))
-                decl(decl_param);
-        }
+        } while (try_match(","));
 
         match(")");
 
