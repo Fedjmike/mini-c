@@ -217,7 +217,7 @@ void sym_init (int max) {
     global_no = 0;
     is_fn = calloc(max, ptr_size);
 
-    params = malloc(ptr_size*max);
+    locals = malloc(ptr_size*max);
     local_no = 0;
     param_no = 0;
     offsets = calloc(max, word_size);
@@ -729,7 +729,7 @@ void decl (int kind) {
 
         if (try_match("=")) {
             if (token == token_int)
-                fprintf(output, "_%s: .quad %d\n", ident, atoi(buffer));
+                fprintf(output, "%s: .quad %d\n", ident, atoi(buffer));
 
             else
                 error("expected a constant expression, found '%s'\n");
@@ -738,7 +738,7 @@ void decl (int kind) {
 
         /*Static data defaults to zero if no initializer*/
         } else if (!fn)
-            fprintf(output, "_%s: .quad 0\n", ident);
+            fprintf(output, "%s: .quad 0\n", ident);
 
         fputs(".section .text\n", output);
 
