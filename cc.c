@@ -311,12 +311,7 @@ void needs_lvalue (char* msg) {
 void expr ();
 
 /*The code generator for expressions works by placing the results
-  on the top of the stack. Anything involving registers would be
-  difficult because most registers aren't saved between function
-  calls.
-
-  I did try using eax as if it were the top of the stack, it made
-  some things simpler but other things less simple.*/
+  in eax and backing them up to the stack.*/
 
 /*Regarding lvalues and assignment:
 
@@ -340,19 +335,14 @@ void factor () {
         if (see("=") || see("++") || see("--"))
             lvalue = true;
 
-        if (global >= 0) {
-            char* by_ref = is_fn[global] || lvalue ? "offset " : "";
-            fprintf(output, "push %s%s\n", by_ref, globals[global]);
+        if (global >= 0)
+            fprintf(output, "%s eax, [%s]\n", is_fn[global] || lvalue ? "lea" : "mov", globals[global]);
 
-        } else if (local >= 0) {
-            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offsets[local]);
-
-            if (lvalue)
-                fputs("push ebx\n", output);
-        }
+        else if (local >= 0)
+            fprintf(output, "%s eax, [ebp%+d]\n", lvalue ? "lea" : "mov", offsets[local]);
 
     } else if (token == token_int || token == token_char) {
-        fprintf(output, "push %s\n", buffer);
+        fprintf(output, "mov eax, %s\n", buffer);
         next();
 
     } else if (token == token_str) {
@@ -370,7 +360,7 @@ void factor () {
         fputs(".byte 0\n"
               ".section .text\n", output);
 
-        fprintf(output, "push offset _%08d\n", str);
+        fprintf(output, "mov eax, offset _%08d\n", str);
 
     } else if (try_match("(")) {
         expr();
@@ -385,6 +375,8 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
+            fputs("push eax\n", output);
+
             int arg_no = 0;
 
             if (waiting_for(")")) {
@@ -399,7 +391,8 @@ void object () {
 
                     fprintf(output, "_%08d:\n", next_label);
                     expr();
-                    fprintf(output, "jmp _%08d\n", prev_label);
+                    fprintf(output, "push eax\n"
+                                    "jmp _%08d\n", prev_label);
                     arg_no++;
 
                     prev_label = next_label;
@@ -414,20 +407,18 @@ void object () {
 
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
             fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
-            fputs("push eax\n", output);
 
         } else if (try_match("[")) {
+            fputs("push eax\n", output);
+
             expr();
             match("]");
-
-            fputs("pop ebx\n"
-                  "pop ecx\n", output);
 
             if (see("=") || see("++") || see("--"))
                 lvalue = true;
 
-            fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
-            fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
+            fprintf(output, "pop ebx\n"
+                            "%s eax, dword ptr [eax*%d+ebx]\n", lvalue ? "lea" : "mov", word_size);
 
         } else
             return;
@@ -439,14 +430,13 @@ void unary () {
         /*Recurse to allow chains of unary operations, LIFO order*/
         unary();
 
-        fputs("cmp dword ptr [esp], 0\n"
-              "mov ebx, 0\n"
-              "sete bl\n"
-              "mov dword ptr [esp], ebx\n", output);
+        fputs("cmp eax, 0\n"
+              "mov eax, 0\n"
+              "sete al\n", output);
 
     } else if (try_match("-")) {
         unary();
-        fputs("neg dword ptr [esp]\n", output);
+        fputs("neg eax\n", output);
 
     } else if (try_match("*")) {
         unary();
@@ -455,16 +445,15 @@ void unary () {
             lvalue = true;
 
         else
-            fputs("pop ebx\n"
-                  "push dword ptr [ebx]", output);
+            fputs("mov eax, dword ptr [eax]", output);
 
     } else {
         /*This function call compiles itself*/
         object();
 
         if (see("++") || see("--")) {
-            fprintf(output, "pop ebx\n"
-                            "push dword ptr [ebx]\n"
+            fprintf(output, "mov ebx, eax\n"
+                            "mov eax, dword ptr [ebx]\n"
                             "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             needs_lvalue("assignment operator '%s' requires a modifiable object\n");
@@ -477,19 +466,16 @@ void expr_3 () {
     unary();
 
     while (see("+") || see("-") || see("*")) {
-        char* instr = see("*") ? 0 : see("+") ? "add" : "sub";
+        fputs("push eax\n", output);
+
+        char* instr = !see("*") ? see("+") ? "add" : "sub" : "imul";
 
         next();
         unary();
 
-        fputs("pop ebx\n", output);
-
-        if (instr == 0) {
-            fputs("imul ebx, dword ptr [esp]\n"
-                  "mov dword ptr [esp], ebx\n", output);
-
-        } else
-            fprintf(output, "%s dword ptr [esp], ebx\n", instr);
+        fprintf(output, "mov ebx, eax\n"
+                        "pop eax\n"
+                        "%s eax, ebx\n", instr);
     }
 }
 
@@ -497,6 +483,8 @@ void expr_2 () {
     expr_3();
 
     while (see("==") || see("!=") || see("<") || see(">=")) {
+        fputs("push eax\n", output);
+
         char* condition = see("==") ? "e" : see("!=") ? "ne" :
                           see("<") ? "l" : "ge";
 
@@ -504,10 +492,9 @@ void expr_2 () {
         expr_3();
 
         fprintf(output, "pop ebx\n"
-                        "mov ecx, 0\n"
-                        "cmp dword ptr [esp], ebx\n"
-                        "set%s cl\n", condition);
-        fputs("mov dword ptr [esp], ecx\n", output);
+                        "cmp ebx, eax\n"
+                        "mov eax, 0\n"
+                        "set%s al\n", condition);
     }
 }
 
@@ -517,10 +504,8 @@ void expr_1 () {
     while (see("||") || see("&&")) {
         int shortcircuit = new_label();
 
-        fprintf(output, "cmp dword ptr [esp], 0\n"
+        fprintf(output, "cmp eax, 0\n"
                         "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
-        fputs("pop ebx\n", output);
-
         next();
         expr_2();
 
@@ -535,8 +520,7 @@ void expr_0 () {
         int false_branch = new_label();
         int join = new_label();
 
-        fprintf(output, "pop ebx\n"
-                        "cmp ebx, 0\n"
+        fprintf(output, "cmp eax, 0\n"
                         "je _%08d\n", false_branch);
 
         expr_1();
@@ -555,11 +539,13 @@ void expr () {
     expr_0();
 
     if (try_match("=")) {
+        fputs("push eax\n", output);
+
         needs_lvalue("assignment requires a modifiable object\n");
         expr_0();
 
-        fputs("pop ebx\n" "pop ecx\n"
-              "mov dword ptr [ecx], ebx\n", output);
+        fputs("pop ebx\n"
+              "mov dword ptr [ebx], eax\n", output);
     }
 }
 
@@ -574,8 +560,7 @@ void if_branch () {
 
     expr();
 
-    fprintf(output, "pop ebx\n"
-                    "cmp ebx, 0\n"
+    fprintf(output, "cmp eax, 0\n"
                     "je _%08d\n", false_branch);
 
     match(")");
@@ -606,8 +591,7 @@ void while_loop () {
     expr();
     match(")");
 
-    fprintf(output, "pop ebx\n"
-                    "cmp ebx, 0\n"
+    fprintf(output, "cmp eax, 0\n"
                     "je _%08d\n", break_to);
 
     if (do_while)
@@ -645,10 +629,8 @@ void line () {
 
     } else {
         if (try_match("return")) {
-            if (waiting_for(";")) {
+            if (waiting_for(";"))
                 expr();
-                fputs("pop eax\n", output);
-            }
 
             fprintf(output, "jmp _%08d\n", return_to);
 
@@ -753,11 +735,10 @@ void decl (int kind) {
         } else {
             expr();
 
-            if (kind == decl_local) {
-                fprintf(output, "pop ebx\n"
-                                "mov dword ptr [ebp%+d], ebx\n", offsets[local]);
+            if (kind == decl_local)
+                fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
 
-            } else
+            else
                 error("a variable initialization is illegal here\n");
         }
 
