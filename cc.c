@@ -707,15 +707,12 @@ void decl (int kind) {
 
     /*Add it to the symbol table*/
     } else {
-        if (kind == decl_param) {
-            new_param(ident);
-
-        } else if (kind == decl_local) {
+        if (kind == decl_local) {
             local = new_local(ident);
             fprintf(output, "sub esp, %d\n", word_size);
 
         } else
-            new_global(ident);
+            (kind == decl_module ? new_global : new_param)(ident);
     }
 
     /*Initialization*/
