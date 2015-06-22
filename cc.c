@@ -182,10 +182,6 @@ int waiting_for (char* look) {
     return !see(look) && !feof(input);
 }
 
-void accept () {
-    next();
-}
-
 void match (char* look) {
     if (!see(look)) {
         printf("%s:%d: error: ", inputname, curln);
@@ -193,12 +189,12 @@ void match (char* look) {
         errors++;
     }
 
-    accept();
+    next();
 }
 
 int try_match (char* look) {
     if (see(look)) {
-        accept();
+        next();
         return true;
 
     } else
@@ -340,7 +336,7 @@ void factor () {
         int local = sym_lookup(locals, local_no, buffer);
 
         require(global >= 0 || local >= 0, "no symbol '%s' declared\n");
-        accept();
+        next();
 
         if (see("=") || see("++") || see("--"))
             lvalue = true;
@@ -358,7 +354,7 @@ void factor () {
 
     } else if (token == token_int || token == token_char) {
         fprintf(output, "push %s\n", buffer);
-        accept();
+        next();
 
     } else if (token == token_str) {
         int str = new_label();
@@ -369,7 +365,7 @@ void factor () {
         /*Consecutive string literals are concatenated*/
         while (token == token_str) {
             fprintf(output, ".ascii %s\n", buffer);
-            accept();
+            next();
         }
 
         fputs(".byte 0\n"
@@ -473,7 +469,7 @@ void unary () {
                             "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             needs_lvalue("assignment operator '%s' requires a modifiable object\n");
-            accept();
+            next();
         }
     }
 }
@@ -484,7 +480,7 @@ void expr_3 () {
     while (see("+") || see("-") || see("*")) {
         char* instr = see("*") ? 0 : see("+") ? "add" : "sub";
 
-        accept();
+        next();
         unary();
 
         fputs("pop ebx\n", output);
@@ -505,7 +501,7 @@ void expr_2 () {
         char* condition = see("==") ? "e" : see("!=") ? "ne" :
                           see("<") ? "l" : "ge";
 
-        accept();
+        next();
         expr_3();
 
         fprintf(output, "pop ebx\n"
@@ -526,7 +522,7 @@ void expr_1 () {
                         "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
         fputs("pop ebx\n", output);
 
-        accept();
+        next();
         expr_2();
 
         fprintf(output, "\t_%08d:\n", shortcircuit);
@@ -704,13 +700,13 @@ void decl (int kind) {
     int fn_impl = false;
     int local;
 
-    accept();
+    next();
 
     while (try_match("*"))
         ;
 
     char* ident = strdup(buffer);
-    accept();
+    next();
 
     /*Functions*/
     if (try_match("(")) {
@@ -757,7 +753,7 @@ void decl (int kind) {
                 fprintf(output, ".section .data\n"
                                 "%s: .quad %d\n", ident, atoi(buffer));
                 fputs(".section .text\n", output);
-                accept();
+                next();
 
             } else
                 error("expected a constant expression, found '%s'\n");
