@@ -719,36 +719,32 @@ void decl (int kind) {
     }
 
     /*Initialization*/
-    if (try_match("=")) {
-        require(fn == 0, "cannot initialize a function\n");
 
-        if (kind == decl_module) {
-            if (token == token_int) {
-                fprintf(output, ".section .data\n"
-                                "%s: .quad %d\n", ident, atoi(buffer));
-                fputs(".section .text\n", output);
-                next();
+    if (see("="))
+        require(fn == 0 || kind == decl_param,
+                fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
 
-            } else
-                error("expected a constant expression, found '%s'\n");
+    if (kind == decl_module) {
+        fputs(".section .data\n", output);
 
-        } else {
-            expr();
-
-            if (kind == decl_local)
-                fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
+        if (try_match("=")) {
+            if (token == token_int)
+                fprintf(output, "_%s: .quad %d\n", ident, atoi(buffer));
 
             else
-                error("a variable initialization is illegal here\n");
-        }
+                error("expected a constant expression, found '%s'\n");
 
-    } else {
-        if (kind == decl_module && !fn) {
-            fputs(".section .data\n", output);
-            /*Static data defaults to zero if no initializer*/
-            fprintf(output, "%s: .quad 0\n", ident);
-            fputs(".section .text\n", output);
-        }
+            next();
+
+        /*Static data defaults to zero if no initializer*/
+        } else if (!fn)
+            fprintf(output, "_%s: .quad 0\n", ident);
+
+        fputs(".section .text\n", output);
+
+    } else if (try_match("=")) {
+        expr();
+        fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
     }
 
     if (!fn_impl && kind != decl_param)
