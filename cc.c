@@ -290,9 +290,8 @@ int sym_lookup (char** table, int table_size, char* look) {
 
 int label_no = 0;
 
-/*The labels to jump to on `return` and `break`*/
+/*The label to jump to on `return`*/
 int return_to;
-int break_to;
 
 int new_label () {
     return label_no++;
@@ -431,7 +430,7 @@ void object () {
             fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
 
         } else
-            break;
+            return;
     }
 }
 
@@ -593,8 +592,7 @@ void if_branch () {
 
 void while_loop () {
     int loop_to = new_label();
-    int old_break_to = break_to;
-    break_to = new_label();
+    int break_to = new_label();
 
     fprintf(output, "\t_%08d:\n", loop_to);
 
@@ -620,9 +618,6 @@ void while_loop () {
 
     fprintf(output, "jmp _%08d\n", loop_to);
     fprintf(output, "\t_%08d:\n", break_to);
-
-    /*Restore the break label for any outer loop*/
-    break_to = old_break_to;
 }
 
 void decl (int kind);
@@ -656,10 +651,6 @@ void line () {
             }
 
             fprintf(output, "jmp _%08d\n", return_to);
-
-        } else if (try_match("break")) {
-            require(break_to != 0, "break must occur within a loop");
-            fprintf(output, "jmp _%08d\n", break_to);
 
         } else if (waiting_for(";"))
             expr();
