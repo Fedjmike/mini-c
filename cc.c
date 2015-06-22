@@ -418,7 +418,7 @@ void object () {
                 lvalue = true;
 
             fprintf(output, "pop ebx\n"
-                            "%s eax, dword ptr [eax*%d+ebx]\n", lvalue ? "lea" : "mov", word_size);
+                            "%s eax, [eax*%d+ebx]\n", lvalue ? "lea" : "mov", word_size);
 
         } else
             return;
@@ -445,7 +445,7 @@ void unary () {
             lvalue = true;
 
         else
-            fputs("mov eax, dword ptr [eax]", output);
+            fputs("mov eax, [eax]", output);
 
     } else {
         /*This function call compiles itself*/
@@ -453,7 +453,7 @@ void unary () {
 
         if (see("++") || see("--")) {
             fprintf(output, "mov ebx, eax\n"
-                            "mov eax, dword ptr [ebx]\n"
+                            "mov eax, [ebx]\n"
                             "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
             needs_lvalue("assignment operator '%s' requires a modifiable object\n");
