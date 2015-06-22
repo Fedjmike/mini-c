@@ -523,7 +523,7 @@ void expr_0 () {
         fprintf(output, "cmp eax, 0\n"
                         "je _%08d\n", false_branch);
 
-        expr_1();
+        expr_0();
         match(":");
 
         fprintf(output, "jmp _%08d\n", join);
