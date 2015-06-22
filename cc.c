@@ -653,8 +653,9 @@ void line () {
             if (waiting_for(";")) {
                 expr();
                 fputs("pop eax\n", output);
-                fprintf(output, "jmp _%08d\n", return_to);
             }
+
+            fprintf(output, "jmp _%08d\n", return_to);
 
         } else if (try_match("break")) {
             require(break_to != 0, "break must occur within a loop");
