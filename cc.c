@@ -45,7 +45,7 @@ void next_char () {
 void eat_char () {
     /*The compiler is typeless, so as a compromise indexing is done
       in word size jumps, and pointer arithmetic in byte jumps.*/
-    *(buffer + buflength++) = curch;
+    (buffer + buflength++)[0] = curch;
     next_char();
 }
 
@@ -139,7 +139,7 @@ void next () {
     } else
         eat_char();
 
-    *(buffer + buflength++) = 0;
+    (buffer + buflength++)[0] = 0;
 }
 
 void lex_init (char* filename, int maxlen) {
@@ -437,15 +437,6 @@ void unary () {
     } else if (try_match("-")) {
         unary();
         fputs("neg eax\n", output);
-
-    } else if (try_match("*")) {
-        unary();
-
-        if (see("=") || see("++") || see("--"))
-            lvalue = true;
-
-        else
-            fputs("mov eax, [eax]", output);
 
     } else {
         /*This function call compiles itself*/
