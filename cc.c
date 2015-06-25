@@ -718,7 +718,7 @@ void decl (int kind) {
     /*Initialization*/
 
     if (see("="))
-        require(fn == 0 || kind == decl_param,
+        require(!fn && kind != decl_param,
                 fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
 
     if (kind == decl_module) {
