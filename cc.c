@@ -241,7 +241,7 @@ void sym_end () {
 }
 
 void new_global (char* ident) {
-    globals[global_no++] = strdup(ident);
+    globals[global_no++] = ident;
 }
 
 void new_fn (char* ident) {
@@ -252,7 +252,7 @@ void new_fn (char* ident) {
 int new_local (char* ident) {
     int var_index = local_no - param_no;
 
-    locals[local_no] = strdup(ident);
+    locals[local_no] = ident;
     /*The first local variable is directly below the base pointer*/
     offsets[local_no] = -word_size*(var_index+1);
     return local_no++;
