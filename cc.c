@@ -167,16 +167,16 @@ void error (char* format) {
     errors++;
 }
 
-void require (int condition, char* format) {
+void require (bool condition, char* format) {
     if (!condition)
         error(format);
 }
 
-int see (char* look) {
+bool see (char* look) {
     return !strcmp(buffer, look);
 }
 
-int waiting_for (char* look) {
+bool waiting_for (char* look) {
     return !see(look) && !feof(input);
 }
 
@@ -190,7 +190,7 @@ void match (char* look) {
     next();
 }
 
-int try_match (char* look) {
+bool try_match (char* look) {
     if (see(look)) {
         next();
         return true;
@@ -203,7 +203,7 @@ int try_match (char* look) {
 
 char** globals;
 int global_no;
-int* is_fn;
+bool* is_fn;
 
 char** locals;
 int local_no;
@@ -297,7 +297,7 @@ int new_label () {
 
 /*==== One-pass parser and code generator ====*/
 
-int lvalue;
+bool lvalue;
 
 void needs_lvalue (char* msg) {
     if (!lvalue)
@@ -506,7 +506,7 @@ void expr_1 () {
     }
 }
 
-void branch (int expr);
+void branch (bool expr);
 
 void expr_0 () {
     expr_1();
@@ -531,7 +531,7 @@ void expr () {
 
 void line ();
 
-void branch (int expr) {
+void branch (bool expr) {
     int false_branch = new_label();
     int join = new_label();
 
@@ -567,7 +567,7 @@ void while_loop () {
 
     fprintf(output, "\t_%08d:\n", loop_to);
 
-    int do_while = try_match("do");
+    bool do_while = try_match("do");
 
     if (do_while)
         line();
@@ -604,7 +604,7 @@ void line () {
     else if (see("while") || see("do"))
         while_loop();
 
-    else if (see("int") || see("char"))
+    else if (see("int") || see("char") || see("bool"))
         decl(decl_local);
 
     else if (try_match("{")) {
@@ -656,8 +656,8 @@ void decl (int kind) {
        - Parameter decls, which do not and cannot.
        - Module decls, which end in a semicolon unless there is a function body.*/
 
-    int fn = false;
-    int fn_impl = false;
+    bool fn = false;
+    bool fn_impl = false;
     int local;
 
     next();
