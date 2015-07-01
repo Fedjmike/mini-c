@@ -7,11 +7,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 /*No enums :( */
-int true = 1;
-int false = 0;
-
 int ptr_size = 4;
 int word_size = 4;
 
@@ -325,7 +323,11 @@ void expr ();
 void factor () {
     lvalue = false;
 
-    if (token == token_ident) {
+    if (see("true") || see("false")) {
+        fprintf(output, "mov eax, %d\n", see("true") ? 1 : 0);
+        next();
+
+    } else if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
 
