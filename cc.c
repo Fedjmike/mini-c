@@ -504,26 +504,13 @@ void expr_1 () {
     }
 }
 
+void branch (int expr);
+
 void expr_0 () {
     expr_1();
 
-    if (try_match("?")) {
-        int false_branch = new_label();
-        int join = new_label();
-
-        fprintf(output, "cmp eax, 0\n"
-                        "je _%08d\n", false_branch);
-
-        expr_0();
-        match(":");
-
-        fprintf(output, "jmp _%08d\n", join);
-        fprintf(output, "\t_%08d:\n", false_branch);
-
-        expr_0();
-
-        fprintf(output, "\t_%08d:\n", join);
-    }
+    if (try_match("?"))
+        branch(true);
 }
 
 void expr () {
@@ -542,28 +529,34 @@ void expr () {
 
 void line ();
 
-void if_branch () {
+void branch (int expr) {
     int false_branch = new_label();
     int join = new_label();
-
-    match("if");
-    match("(");
-
-    expr();
 
     fprintf(output, "cmp eax, 0\n"
                     "je _%08d\n", false_branch);
 
-    match(")");
-    line();
+    (expr ? expr_0 : line)();
 
     fprintf(output, "jmp _%08d\n", join);
     fprintf(output, "\t_%08d:\n", false_branch);
 
-    if (try_match("else"))
+    if (expr) {
+        match(":");
+        expr_0();
+
+    } else if (try_match("else"))
         line();
 
     fprintf(output, "\t_%08d:\n", join);
+}
+
+void if_branch () {
+    match("if");
+    match("(");
+    expr();
+    match(")");
+    branch(false);
 }
 
 void while_loop () {
