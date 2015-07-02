@@ -100,18 +100,12 @@ void next () {
 
         eat_char();
 
-    //Operators which form a new operator when duplicated e.g. '++'
-    } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
+    //Two char operators
+    } else if (   curch == '+' || curch == '-' || curch == '|' || curch == '&'
+               || curch == '=' || curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
-        if (curch == buffer[0])
-            eat_char();
-
-    //Operators which may be followed by a '='
-    } else if (curch == '!' || curch == '>' || curch == '<') {
-        eat_char();
-
-        if (curch == '=')
+        if ((curch == buffer[0] && curch != '!') || curch == '=')
             eat_char();
 
     } else
