@@ -456,16 +456,16 @@ void expr (int level) {
         next();
         expr(level+1);
 
-        char* arith = "mov ebx, eax\n"
-                      "pop eax\n"
-                      "%s eax, ebx\n";
+        if (level == 4)
+            fprintf(output, "mov ebx, eax\n"
+                            "pop eax\n"
+                            "%s eax, ebx\n", instr);
 
-        char* comp = "pop ebx\n"
-                     "cmp ebx, eax\n"
-                     "mov eax, 0\n"
-                     "set%s al\n";
-
-        fprintf(output, level == 4 ? arith : comp, instr);
+        else
+            fprintf(output, "pop ebx\n"
+                            "cmp ebx, eax\n"
+                            "mov eax, 0\n"
+                            "set%s al\n", instr);
     }
 
     if (level == 2) while (see("||") || see("&&")) {
