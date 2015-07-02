@@ -445,32 +445,27 @@ void expr (int level) {
 
     expr(level+1);
 
-    if (level == 4) while (see("+") || see("-") || see("*")) {
+    while (  level == 4 ? see("+") || see("-") || see("*")
+           : level == 3 ? see("==") || see("!=") || see("<") || see(">=")
+           : false) {
         fputs("push eax\n", output);
 
-        char* instr = !see("*") ? see("+") ? "add" : "sub" : "imul";
+        char* instr = see("+") ? "add" : see("-") ? "sub" : see("*") ? "imul" :
+                      see("==") ? "e" : see("!=") ? "ne" : see("<") ? "l" : "ge";
 
         next();
         expr(level+1);
 
-        fprintf(output, "mov ebx, eax\n"
-                        "pop eax\n"
-                        "%s eax, ebx\n", instr);
-    }
+        char* arith = "mov ebx, eax\n"
+                      "pop eax\n"
+                      "%s eax, ebx\n";
 
-    if (level == 3) while (see("==") || see("!=") || see("<") || see(">=")) {
-        fputs("push eax\n", output);
+        char* comp = "pop ebx\n"
+                     "cmp ebx, eax\n"
+                     "mov eax, 0\n"
+                     "set%s al\n";
 
-        char* condition = see("==") ? "e" : see("!=") ? "ne" :
-                          see("<") ? "l" : "ge";
-
-        next();
-        expr(level+1);
-
-        fprintf(output, "pop ebx\n"
-                        "cmp ebx, eax\n"
-                        "mov eax, 0\n"
-                        "set%s al\n", condition);
+        fprintf(output, level == 4 ? arith : comp, instr);
     }
 
     if (level == 2) while (see("||") || see("&&")) {
