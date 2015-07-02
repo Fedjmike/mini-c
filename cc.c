@@ -286,7 +286,7 @@ void needs_lvalue (char* msg) {
     lvalue = false;
 }
 
-void expr ();
+void expr (int level);
 
 //The code generator for expressions works by placing the results
 //in eax and backing them up to the stack.
@@ -345,7 +345,7 @@ void factor () {
         fprintf(output, "mov eax, offset _%08d\n", str);
 
     } else if (try_match("(")) {
-        expr();
+        expr(0);
         match(")");
 
     } else
@@ -372,7 +372,7 @@ void object () {
                     int next_label = new_label();
 
                     fprintf(output, "_%08d:\n", next_label);
-                    expr();
+                    expr(0);
                     fprintf(output, "push eax\n"
                                     "jmp _%08d\n", prev_label);
                     arg_no++;
@@ -393,7 +393,7 @@ void object () {
         } else if (try_match("[")) {
             fputs("push eax\n", output);
 
-            expr();
+            expr(0);
             match("]");
 
             if (see("=") || see("++") || see("--"))
@@ -435,74 +435,63 @@ void unary () {
     }
 }
 
-void expr_3 () {
-    unary();
+void branch (bool expr);
 
-    while (see("+") || see("-") || see("*")) {
+void expr (int level) {
+    if (level == 5) {
+        unary();
+        return;
+    }
+
+    expr(level+1);
+
+    if (level == 4) while (see("+") || see("-") || see("*")) {
         fputs("push eax\n", output);
 
         char* instr = !see("*") ? see("+") ? "add" : "sub" : "imul";
 
         next();
-        unary();
+        expr(level+1);
 
         fprintf(output, "mov ebx, eax\n"
                         "pop eax\n"
                         "%s eax, ebx\n", instr);
     }
-}
 
-void expr_2 () {
-    expr_3();
-
-    while (see("==") || see("!=") || see("<") || see(">=")) {
+    if (level == 3) while (see("==") || see("!=") || see("<") || see(">=")) {
         fputs("push eax\n", output);
 
         char* condition = see("==") ? "e" : see("!=") ? "ne" :
                           see("<") ? "l" : "ge";
 
         next();
-        expr_3();
+        expr(level+1);
 
         fprintf(output, "pop ebx\n"
                         "cmp ebx, eax\n"
                         "mov eax, 0\n"
                         "set%s al\n", condition);
     }
-}
 
-void expr_1 () {
-    expr_2();
-
-    while (see("||") || see("&&")) {
+    if (level == 2) while (see("||") || see("&&")) {
         int shortcircuit = new_label();
 
         fprintf(output, "cmp eax, 0\n"
                         "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
         next();
-        expr_2();
+        expr(level+1);
 
         fprintf(output, "\t_%08d:\n", shortcircuit);
     }
-}
 
-void branch (bool expr);
-
-void expr_0 () {
-    expr_1();
-
-    if (try_match("?"))
+    if (level == 1 && try_match("?"))
         branch(true);
-}
 
-void expr () {
-    expr_0();
-
-    if (try_match("=")) {
+    if (level == 0 && try_match("=")) {
         fputs("push eax\n", output);
 
         needs_lvalue("assignment requires a modifiable object\n");
-        expr_0();
+        expr(level+1);
 
         fputs("pop ebx\n"
               "mov dword ptr [ebx], eax\n", output);
@@ -511,21 +500,21 @@ void expr () {
 
 void line ();
 
-void branch (bool expr) {
+void branch (bool isexpr) {
     int false_branch = new_label();
     int join = new_label();
 
     fprintf(output, "cmp eax, 0\n"
                     "je _%08d\n", false_branch);
 
-    (expr ? expr_0 : line)();
+    isexpr ? expr(1) : line();
 
     fprintf(output, "jmp _%08d\n", join);
     fprintf(output, "\t_%08d:\n", false_branch);
 
-    if (expr) {
+    if (isexpr) {
         match(":");
-        expr_0();
+        expr(1);
 
     } else if (try_match("else"))
         line();
@@ -536,7 +525,7 @@ void branch (bool expr) {
 void if_branch () {
     match("if");
     match("(");
-    expr();
+    expr(0);
     match(")");
     branch(false);
 }
@@ -554,7 +543,7 @@ void while_loop () {
 
     match("while");
     match("(");
-    expr();
+    expr(0);
     match(")");
 
     fprintf(output, "cmp eax, 0\n"
@@ -596,12 +585,12 @@ void line () {
     } else {
         if (try_match("return")) {
             if (waiting_for(";"))
-                expr();
+                expr(0);
 
             fprintf(output, "jmp _%08d\n", return_to);
 
         } else if (waiting_for(";"))
-            expr();
+            expr(0);
 
         match(";");
     }
@@ -706,7 +695,7 @@ void decl (int kind) {
         fputs(".section .text\n", output);
 
     } else if (try_match("=")) {
-        expr();
+        expr(0);
         fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
     }
 
