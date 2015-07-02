@@ -1,21 +1,13 @@
-//---------------
-// mini-c, by Sam Nipps (c) 2015
-// MIT license
-//---------------
-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdbool.h>
 
-//No enums :(
 int ptr_size = 4;
 int word_size = 4;
 
 FILE* output;
-
-//==== Lexer ====
 
 char* inputname;
 FILE* input;
@@ -33,38 +25,25 @@ int token_int = 2;
 int token_char = 3;
 int token_str = 4;
 
-char next_char () {
+void next_char () {
     if (curch == '\n')
         curln++;
 
-    return curch = fgetc(input);
+    curch = fgetc(input);
 }
-
-bool prev_char (char before) {
-    ungetc(curch, input);
-    curch = before;
-    return false;
-}
-
 void eat_char () {
-    //The compiler is typeless, so as a compromise indexing is done
-    //in word size jumps, and pointer arithmetic in byte jumps.
     (buffer + buflength++)[0] = curch;
     next_char();
 }
 
 void next () {
-    //Skip whitespace
     while (curch == ' ' || curch == '\r' || curch == '\n' || curch == '\t')
         next_char();
 
-    //Treat preprocessor lines as line comments
-    if (   curch == '#'
-        || (curch == '/' && (next_char() == '/' || prev_char('/')))) {
+    if (curch == '#') {
         while (curch != '\n' && !feof(input))
             next_char();
 
-        //Restart the function (to skip subsequent whitespace, comments and pp)
         next();
         return;
     }
@@ -72,21 +51,18 @@ void next () {
     buflength = 0;
     token = token_other;
 
-    //Identifier or keyword
     if (isalpha(curch)) {
         token = token_ident;
 
         while ((isalnum(curch) || curch == '_') && !feof(input))
             eat_char();
 
-    //Integer literal
     } else if (isdigit(curch)) {
         token = token_int;
 
         while (isdigit(curch) && !feof(input))
             eat_char();
 
-    //String or character literal
     } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
         eat_char();
@@ -100,14 +76,12 @@ void next () {
 
         eat_char();
 
-    //Operators which form a new operator when duplicated e.g. '++'
     } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
         eat_char();
 
         if (curch == buffer[0])
             eat_char();
 
-    //Operators which may be followed by a '='
     } else if (curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
@@ -124,7 +98,6 @@ void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
-    //Get the lexer into a usable state for the parser
     curln = 1;
     buffer = malloc(maxlen);
     next_char();
@@ -136,13 +109,10 @@ void lex_end () {
     fclose(input);
 }
 
-//==== Parser helper functions ====
-
 int errors;
 
 void error (char* format) {
     printf("%s:%d: error: ", inputname, curln);
-    //Accepting an untrusted format string? Naughty!
     printf(format, buffer);
     errors++;
 }
@@ -178,8 +148,6 @@ bool try_match (char* look) {
     } else
         return false;
 }
-
-//==== Symbol table ====
 
 char** globals;
 int global_no;
@@ -231,23 +199,15 @@ int new_local (char* ident) {
     int var_index = local_no - param_no;
 
     locals[local_no] = ident;
-    //The first local variable is directly below the base pointer
     offsets[local_no] = -word_size*(var_index+1);
     return local_no++;
 }
 
 void new_param (char* ident) {
     int local = new_local(ident);
-
-    //At and above the base pointer, in order, are:
-    // 1. the old base pointer, [ebp]
-    // 2. the return address, [ebp+W]
-    // 3. the first parameter, [ebp+2W]
-    //   and so on
     offsets[local] = word_size*(2 + param_no++);
 }
 
-//Enter the scope of a new function
 void new_scope () {
     table_end(locals, local_no);
     local_no = 0;
@@ -264,18 +224,13 @@ int sym_lookup (char** table, int table_size, char* look) {
     return -1;
 }
 
-//==== Codegen labels ====
-
 int label_no = 0;
 
-//The label to jump to on `return`
 int return_to;
 
 int new_label () {
     return label_no++;
 }
-
-//==== One-pass parser and code generator ====
 
 bool lvalue;
 
@@ -287,18 +242,6 @@ void needs_lvalue (char* msg) {
 }
 
 void expr (int level);
-
-//The code generator for expressions works by placing the results
-//in eax and backing them up to the stack.
-
-//Regarding lvalues and assignment:
-
-//An expression which can return an lvalue looks head for an
-//assignment operator. If it finds one, then it pushes the
-//address of its result. Otherwise, it dereferences it.
-
-//The global lvalue flag tracks whether the last operand was an
-//lvalue; assignment operators check and reset it.
 
 void factor () {
     lvalue = false;
@@ -333,7 +276,6 @@ void factor () {
         fprintf(output, ".section .rodata\n"
                         "_%08d:\n", str);
 
-        //Consecutive string literals are concatenated
         while (token == token_str) {
             fprintf(output, ".ascii %s\n", buffer);
             next();
@@ -409,7 +351,6 @@ void object () {
 
 void unary () {
     if (try_match("!")) {
-        //Recurse to allow chains of unary operations, LIFO order
         unary();
 
         fputs("cmp eax, 0\n"
@@ -421,7 +362,6 @@ void unary () {
         fputs("neg eax\n", output);
 
     } else {
-        //This function call compiles itself
         object();
 
         if (see("++") || see("--")) {
@@ -555,7 +495,6 @@ void while_loop () {
 
 void decl (int kind);
 
-//See decl() implementation
 int decl_module = 1;
 int decl_local = 2;
 int decl_param = 3;
@@ -590,21 +529,15 @@ void line () {
 }
 
 void function (char* ident) {
-    //Prologue
-
     fprintf(output, ".globl %s\n", ident);
     fprintf(output, "%s:\n", ident);
 
     fputs("push ebp\n"
           "mov ebp, esp\n", output);
 
-    //Body
-
     return_to = new_label();
 
     line();
-
-    //Epilogue
 
     fprintf(output, "\t_%08d:\n", return_to);
     fputs("mov esp, ebp\n"
@@ -613,11 +546,6 @@ void function (char* ident) {
 }
 
 void decl (int kind) {
-    //A C declaration comes in three forms:
-    // - Local decls, which end in a semicolon and can have an initializer.
-    // - Parameter decls, which do not and cannot.
-    // - Module decls, which end in a semicolon unless there is a function body.
-
     bool fn = false;
     bool fn_impl = false;
     int local;
@@ -630,12 +558,10 @@ void decl (int kind) {
     char* ident = strdup(buffer);
     next();
 
-    //Functions
     if (try_match("(")) {
         if (kind == decl_module)
             new_scope();
 
-        //Params
         if (waiting_for(")")) do {
             decl(decl_param);
         } while (try_match(","));
@@ -645,7 +571,6 @@ void decl (int kind) {
         new_fn(ident);
         fn = true;
 
-        //Body
         if (see("{")) {
             require(kind == decl_module, "a function implementation is illegal here\n");
 
@@ -653,7 +578,6 @@ void decl (int kind) {
             function(ident);
         }
 
-    //Add it to the symbol table
     } else {
         if (kind == decl_local) {
             local = new_local(ident);
@@ -662,8 +586,6 @@ void decl (int kind) {
         } else
             (kind == decl_module ? new_global : new_param)(ident);
     }
-
-    //Initialization
 
     if (see("="))
         require(!fn && kind != decl_param,
@@ -681,7 +603,6 @@ void decl (int kind) {
 
             next();
 
-        //Static data defaults to zero if no initializer
         } else if (!fn)
             fprintf(output, "%s: .quad 0\n", ident);
 
@@ -717,13 +638,9 @@ int main (int argc, char** argv) {
 
     sym_init(256);
 
-    //No arrays? Fine! A 0xFFFFFF terminated string of null terminated strings will do.
-    //A negative-terminated null-terminated strings string, if you will
     char* std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0ungetc\0feof\0fputs\0fprintf\0puts\0printf\0"
                     "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
 
-    //Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
-    //(char) 0xFF == -1, (int) 0xFFFFFF == -1
     while (std_fns[0] != -1) {
         new_fn(std_fns);
         std_fns = std_fns+strlen(std_fns)+1;
