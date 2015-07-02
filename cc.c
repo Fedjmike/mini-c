@@ -583,14 +583,13 @@ void line () {
         match("}");
 
     } else {
-        if (try_match("return")) {
-            if (waiting_for(";"))
-                expr(0);
+        bool ret = try_match("return");
 
-            fprintf(output, "jmp _%08d\n", return_to);
-
-        } else if (waiting_for(";"))
+        if (waiting_for(";"))
             expr(0);
+
+        if (ret)
+            fprintf(output, "jmp _%08d\n", return_to);
 
         match(";");
     }
