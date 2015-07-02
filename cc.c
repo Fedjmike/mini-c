@@ -199,7 +199,7 @@ int new_local (char* ident) {
     int var_index = local_no - param_no;
 
     locals[local_no] = ident;
-    offsets[local_no] = -word_size*(var_index+1);
+    offsets[local_no] = (0-word_size)*(var_index+1);
     return local_no++;
 }
 
@@ -221,7 +221,7 @@ int sym_lookup (char** table, int table_size, char* look) {
         if (!strcmp(table[i++], look))
             return i-1;
 
-    return -1;
+    return 0-1;
 }
 
 int label_no = 0;
@@ -356,10 +356,6 @@ void unary () {
         fputs("cmp eax, 0\n"
               "mov eax, 0\n"
               "sete al\n", output);
-
-    } else if (try_match("-")) {
-        unary();
-        fputs("neg eax\n", output);
 
     } else {
         object();
@@ -641,7 +637,7 @@ int main (int argc, char** argv) {
     char* std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0ungetc\0feof\0fputs\0fprintf\0puts\0printf\0"
                     "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
 
-    while (std_fns[0] != -1) {
+    while (std_fns[0] != 0-1) {
         new_fn(std_fns);
         std_fns = std_fns+strlen(std_fns)+1;
     }
