@@ -445,13 +445,12 @@ void expr (int level) {
 
     expr(level+1);
 
-    while (  level == 4 ? see("+") || see("-") || see("*")
-           : level == 3 ? see("==") || see("!=") || see("<") || see(">=")
-           : false) {
-        fputs("push eax\n", output);
+    char* instr;
 
-        char* instr = see("+") ? "add" : see("-") ? "sub" : see("*") ? "imul" :
-                      see("==") ? "e" : see("!=") ? "ne" : see("<") ? "l" : "ge";
+    while ((instr =   level == 4 ? (see("+") ? "add" : see("-") ? "sub" : see("*") ? "imul" : 0)
+                    : level == 3 ? (see("==") ? "e" : see("!=") ? "ne" : see("<") ? "l" : see(">=") ? "ge" : 0)
+                    : 0)) {
+        fputs("push eax\n", output);
 
         next();
         expr(level+1);
