@@ -41,7 +41,7 @@ void next () {
         next_char();
 
     if (curch == '#') {
-        while (curch != '\n' && !feof(input))
+        while (curch != '\n' && feof(input) == false)
             next_char();
 
         next();
@@ -54,20 +54,20 @@ void next () {
     if (isalpha(curch)) {
         token = token_ident;
 
-        while ((isalnum(curch) || curch == '_') && !feof(input))
+        while ((isalnum(curch) || curch == '_') && feof(input) == false)
             eat_char();
 
     } else if (isdigit(curch)) {
         token = token_int;
 
-        while (isdigit(curch) && !feof(input))
+        while (isdigit(curch) && feof(input) == false)
             eat_char();
 
     } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
         eat_char();
 
-        while (curch != buffer[0] && !feof(input)) {
+        while (curch != buffer[0] && feof(input) == false) {
             if (curch == '\\')
                 eat_char();
 
@@ -118,20 +118,20 @@ void error (char* format) {
 }
 
 void require (bool condition, char* format) {
-    if (!condition)
+    if (condition == false)
         error(format);
 }
 
 bool see (char* look) {
-    return !strcmp(buffer, look);
+    return strcmp(buffer, look) == 0;
 }
 
 bool waiting_for (char* look) {
-    return !see(look) && !feof(input);
+    return see(look) == false && feof(input) == false;
 }
 
 void match (char* look) {
-    if (!see(look)) {
+    if (see(look) == false) {
         printf("%s:%d: error: ", inputname, curln);
         printf("expected '%s', found '%s'\n", look, buffer);
         errors++;
@@ -218,7 +218,7 @@ int sym_lookup (char** table, int table_size, char* look) {
     int i = 0;
 
     while (i < table_size)
-        if (!strcmp(table[i++], look))
+        if (strcmp(table[i++], look) == 0)
             return i-1;
 
     return 0-1;
@@ -235,7 +235,7 @@ int new_label () {
 bool lvalue;
 
 void needs_lvalue (char* msg) {
-    if (!lvalue)
+    if (lvalue == false)
         error(msg);
 
     lvalue = false;
@@ -350,24 +350,15 @@ void object () {
 }
 
 void unary () {
-    if (try_match("!")) {
-        unary();
+    object();
 
-        fputs("cmp eax, 0\n"
-              "mov eax, 0\n"
-              "sete al\n", output);
+    if (see("++") || see("--")) {
+        fprintf(output, "mov ebx, eax\n"
+                        "mov eax, [ebx]\n"
+                        "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
-    } else {
-        object();
-
-        if (see("++") || see("--")) {
-            fprintf(output, "mov ebx, eax\n"
-                            "mov eax, [ebx]\n"
-                            "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
-
-            needs_lvalue("assignment operator '%s' requires a modifiable object\n");
-            next();
-        }
+        needs_lvalue("assignment operator '%s' requires a modifiable object\n");
+        next();
     }
 }
 
@@ -584,7 +575,7 @@ void decl (int kind) {
     }
 
     if (see("="))
-        require(!fn && kind != decl_param,
+        require(fn == false && kind != decl_param,
                 fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
 
     if (kind == decl_module) {
@@ -599,7 +590,7 @@ void decl (int kind) {
 
             next();
 
-        } else if (!fn)
+        } else if (fn == false)
             fprintf(output, "%s: .quad 0\n", ident);
 
         fputs(".section .text\n", output);
@@ -609,7 +600,7 @@ void decl (int kind) {
         fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
     }
 
-    if (!fn_impl && kind != decl_param)
+    if (fn_impl == false && kind != decl_param)
         match(";");
 }
 
@@ -618,7 +609,7 @@ void program () {
 
     errors = 0;
 
-    while (!feof(input))
+    while (feof(input) == false)
         decl(decl_module);
 }
 
