@@ -1,23 +1,21 @@
-/********
- * mini-c, by Sam Nipps (c) 2015
- * MIT license
- ********/
+//---------------
+// mini-c, by Sam Nipps (c) 2015
+// MIT license
+//---------------
 
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdbool.h>
 
-/*No enums :( */
-int true = 1;
-int false = 0;
-
+//No enums :(
 int ptr_size = 4;
 int word_size = 4;
 
 FILE* output;
 
-/*==== Lexer ====*/
+//==== Lexer ====
 
 char* inputname;
 FILE* input;
@@ -35,33 +33,38 @@ int token_int = 2;
 int token_char = 3;
 int token_str = 4;
 
-void next_char () {
+char next_char () {
     if (curch == '\n')
         curln++;
 
-    curch = fgetc(input);
+    return curch = fgetc(input);
+}
+
+bool prev_char (char before) {
+    ungetc(curch, input);
+    curch = before;
+    return false;
 }
 
 void eat_char () {
-    /*The compiler is typeless, so as a compromise indexing is done
-      in word size jumps, and pointer arithmetic in byte jumps.*/
-    *(buffer + buflength++) = curch;
+    //The compiler is typeless, so as a compromise indexing is done
+    //in word size jumps, and pointer arithmetic in byte jumps.
+    (buffer + buflength++)[0] = curch;
     next_char();
 }
 
 void next () {
-    /*Skip whitespace*/
+    //Skip whitespace
     while (curch == ' ' || curch == '\r' || curch == '\n' || curch == '\t')
         next_char();
 
-    /*Treat preprocessor lines as line comments*/
-    if (curch == '#') {
-        next_char();
-
+    //Treat preprocessor lines as line comments
+    if (   curch == '#'
+        || (curch == '/' && (next_char() == '/' || prev_char('/')))) {
         while (curch != '\n' && !feof(input))
             next_char();
 
-        /*Restart the function (to skip subsequent whitespace and pp)*/
+        //Restart the function (to skip subsequent whitespace, comments and pp)
         next();
         return;
     }
@@ -69,23 +72,21 @@ void next () {
     buflength = 0;
     token = token_other;
 
-    /*Identifier or keyword*/
+    //Identifier or keyword
     if (isalpha(curch)) {
         token = token_ident;
-        eat_char();
 
         while ((isalnum(curch) || curch == '_') && !feof(input))
             eat_char();
 
-    /*Integer literal*/
+    //Integer literal
     } else if (isdigit(curch)) {
         token = token_int;
-        eat_char();
 
         while (isdigit(curch) && !feof(input))
             eat_char();
 
-    /*String or character literal*/
+    //String or character literal
     } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
         eat_char();
@@ -99,58 +100,31 @@ void next () {
 
         eat_char();
 
-    /*Operators which form a new operator when duplicated e.g. '++'*/
+    //Operators which form a new operator when duplicated e.g. '++'
     } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
         eat_char();
 
         if (curch == buffer[0])
             eat_char();
 
-    /*Operators which may be followed by a '='*/
+    //Operators which may be followed by a '='
     } else if (curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
         if (curch == '=')
             eat_char();
 
-    /*Either a comment or a '/' operator*/
-    } else if (curch == '/') {
-        eat_char();
-
-        /*Comment*/
-        if (curch == '*') {
-            next_char();
-
-            buflength = 0;
-
-            while (!feof(input)) {
-                if (curch == '*') {
-                    next_char();
-
-                    if (curch == '/') {
-                        next_char();
-
-                        /*Restart the function, overwriting any chars eaten so far*/
-                        next();
-                        return;
-                    }
-
-                } else
-                    next_char();
-            }
-        }
-
     } else
         eat_char();
 
-    *(buffer + buflength++) = 0;
+    (buffer + buflength++)[0] = 0;
 }
 
 void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
-    /*Get the lexer into a usable state for the parser*/
+    //Get the lexer into a usable state for the parser
     curln = 1;
     buffer = malloc(maxlen);
     next_char();
@@ -162,27 +136,28 @@ void lex_end () {
     fclose(input);
 }
 
-/*==== Parser helper functions ====*/
+//==== Parser helper functions ====
 
 int errors;
 
 void error (char* format) {
     printf("%s:%d: error: ", inputname, curln);
-    /*Accepting an untrusted format string? Naughty!*/
+    //Accepting an untrusted format string? Naughty!
     printf(format, buffer);
     errors++;
 }
 
-int see (char* look) {
+void require (bool condition, char* format) {
+    if (!condition)
+        error(format);
+}
+
+bool see (char* look) {
     return !strcmp(buffer, look);
 }
 
-int waiting_for (char* look) {
+bool waiting_for (char* look) {
     return !see(look) && !feof(input);
-}
-
-void accept () {
-    next();
 }
 
 void match (char* look) {
@@ -192,40 +167,38 @@ void match (char* look) {
         errors++;
     }
 
-    accept();
+    next();
 }
 
-int try_match (char* look) {
+bool try_match (char* look) {
     if (see(look)) {
-        accept();
+        next();
         return true;
 
     } else
         return false;
 }
 
-/*==== Symbol table ====*/
+//==== Symbol table ====
 
 char** globals;
 int global_no;
-int* is_fn;
-
-char** params;
-int param_no;
+bool* is_fn;
 
 char** locals;
 int local_no;
+int param_no;
+int* offsets;
 
 void sym_init (int max) {
     globals = malloc(ptr_size*max);
     global_no = 0;
     is_fn = calloc(max, ptr_size);
 
-    params = malloc(ptr_size*max);
-    param_no = 0;
-
     locals = malloc(ptr_size*max);
     local_no = 0;
+    param_no = 0;
+    offsets = calloc(max, word_size);
 }
 
 void table_end (char** table, int table_size) {
@@ -240,14 +213,13 @@ void sym_end () {
     free(globals);
     free(is_fn);
 
-    table_end(params, param_no);
     table_end(locals, local_no);
-    free(params);
     free(locals);
+    free(offsets);
 }
 
 void new_global (char* ident) {
-    globals[global_no++] = strdup(ident);
+    globals[global_no++] = ident;
 }
 
 void new_fn (char* ident) {
@@ -255,35 +227,31 @@ void new_fn (char* ident) {
     new_global(ident);
 }
 
-void new_param (char* ident) {
-    params[param_no++] = strdup(ident);
-}
-
 int new_local (char* ident) {
-    locals[local_no] = strdup(ident);
+    int var_index = local_no - param_no;
+
+    locals[local_no] = ident;
+    //The first local variable is directly below the base pointer
+    offsets[local_no] = -word_size*(var_index+1);
     return local_no++;
 }
 
-int param_offset (int index) {
-    /*At and above the base pointer, in order, are:
-       1. the old base pointer, [ebp]
-       2. the return address, [ebp-W]
-       3. the first parameter, [ebp-2W]
-         and so on*/
-    return word_size*(index+2);
+void new_param (char* ident) {
+    int local = new_local(ident);
+
+    //At and above the base pointer, in order, are:
+    // 1. the old base pointer, [ebp]
+    // 2. the return address, [ebp+W]
+    // 3. the first parameter, [ebp+2W]
+    //   and so on
+    offsets[local] = word_size*(2 + param_no++);
 }
 
-int local_offset (int index) {
-    /*The first local variable is directly below the base pointer*/
-    return word_size*(index+1);
-}
-
-/*Enter the scope of a new function body*/
+//Enter the scope of a new function
 void new_scope () {
-    table_end(params, param_no);
     table_end(locals, local_no);
-    param_no = 0;
     local_no = 0;
+    param_no = 0;
 }
 
 int sym_lookup (char** table, int table_size, char* look) {
@@ -296,76 +264,68 @@ int sym_lookup (char** table, int table_size, char* look) {
     return -1;
 }
 
-/*==== Codegen labels ====*/
+//==== Codegen labels ====
 
 int label_no = 0;
 
-/*The labels to jump to on `return` and `break`*/
+//The label to jump to on `return`
 int return_to;
-int break_to;
 
 int new_label () {
     return label_no++;
 }
 
-/*==== One-pass parser and code generator ====*/
+//==== One-pass parser and code generator ====
 
-int lvalue;
+bool lvalue;
 
-void expr ();
+void needs_lvalue (char* msg) {
+    if (!lvalue)
+        error(msg);
 
-/*The code generator for expressions works by placing the results
-  on the top of the stack. Anything involving registers would be
-  difficult because most registers aren't saved between function
-  calls.
+    lvalue = false;
+}
 
-  I did try using eax as if it were the top of the stack, it made
-  some things simpler but other things less simple.*/
+void expr (int level);
 
-/*Regarding lvalues and assignment:
+//The code generator for expressions works by placing the results
+//in eax and backing them up to the stack.
 
-  An expression which can return an lvalue looks head for an
-  assignment operator. If it finds one, then it pushes the
-  address of its result. Otherwise, it dereferences it.
+//Regarding lvalues and assignment:
 
-  The global lvalue flag tracks whether the last operand was an
-  lvalue; assignment operators check and reset it.*/
+//An expression which can return an lvalue looks head for an
+//assignment operator. If it finds one, then it pushes the
+//address of its result. Otherwise, it dereferences it.
+
+//The global lvalue flag tracks whether the last operand was an
+//lvalue; assignment operators check and reset it.
 
 void factor () {
     lvalue = false;
 
-    if (token == token_ident) {
+    if (see("true") || see("false")) {
+        fprintf(output, "mov eax, %d\n", see("true") ? 1 : 0);
+        next();
+
+    } else if (token == token_ident) {
         int global = sym_lookup(globals, global_no, buffer);
-        int param = sym_lookup(params, param_no, buffer);
         int local = sym_lookup(locals, local_no, buffer);
 
-        if (!global && !param && !local)
-            error("no symbol '%s' declared\n");
-
-        accept();
+        require(global >= 0 || local >= 0, "no symbol '%s' declared\n");
+        next();
 
         if (see("=") || see("++") || see("--"))
             lvalue = true;
 
-        if (global >= 0) {
-            if (is_fn[global] || lvalue)
-                fprintf(output, "push offset _%s\n", globals[global]);
+        if (global >= 0)
+            fprintf(output, "%s eax, [_%s]\n", is_fn[global] || lvalue ? "lea" : "mov", globals[global]);
 
-            else
-                fprintf(output, "push dword ptr [_%s]\n", globals[global]);
-
-        } else if (param >= 0 || local >= 0) {
-            int offset = param >= 0 ? param_offset(param) : -local_offset(local);
-
-            fprintf(output, "%s dword ptr [ebp%+d]\n", lvalue ? "lea ebx, " : "push ", offset);
-
-            if (lvalue)
-                fputs("push ebx\n", output);
-        }
+        else if (local >= 0)
+            fprintf(output, "%s eax, [ebp%+d]\n", lvalue ? "lea" : "mov", offsets[local]);
 
     } else if (token == token_int || token == token_char) {
-        fprintf(output, "push %s\n", buffer);
-        accept();
+        fprintf(output, "mov eax, %s\n", buffer);
+        next();
 
     } else if (token == token_str) {
         int str = new_label();
@@ -373,19 +333,19 @@ void factor () {
         fprintf(output, ".section .rodata\n"
                         "_%08d:\n", str);
 
-        /*Consecutive string literals are concatenated*/
+        //Consecutive string literals are concatenated
         while (token == token_str) {
             fprintf(output, ".ascii %s\n", buffer);
-            accept();
+            next();
         }
 
         fputs(".byte 0\n"
               ".section .text\n", output);
 
-        fprintf(output, "push offset _%08d\n", str);
+        fprintf(output, "mov eax, offset _%08d\n", str);
 
     } else if (try_match("(")) {
-        expr();
+        expr(0);
         match(")");
 
     } else
@@ -397,32 +357,31 @@ void object () {
 
     while (true) {
         if (try_match("(")) {
+            fputs("push eax\n", output);
+
             int arg_no = 0;
 
             if (waiting_for(")")) {
                 int start_label = new_label();
                 int end_label = new_label();
-                int last_label = new_label();
+                int prev_label = end_label;
 
                 fprintf(output, "jmp _%08d\n", start_label);
-                fprintf(output, "_%08d:\n", last_label);
-                expr();
-                fprintf(output, "jmp _%08d\n", end_label);
-                arg_no++;
 
-                while (try_match(",")) {
+                do {
                     int next_label = new_label();
 
                     fprintf(output, "_%08d:\n", next_label);
-                    expr();
-                    fprintf(output, "jmp _%08d\n", last_label);
+                    expr(0);
+                    fprintf(output, "push eax\n"
+                                    "jmp _%08d\n", prev_label);
                     arg_no++;
 
-                    last_label = next_label;
-                }
+                    prev_label = next_label;
+                } while (try_match(","));
 
                 fprintf(output, "_%08d:\n", start_label);
-                fprintf(output, "jmp _%08d\n", last_label);
+                fprintf(output, "jmp _%08d\n", prev_label);
                 fprintf(output, "_%08d:\n", end_label);
             }
 
@@ -430,250 +389,174 @@ void object () {
 
             fprintf(output, "call dword ptr [esp+%d]\n", arg_no*word_size);
             fprintf(output, "add esp, %d\n", (arg_no+1)*word_size);
-            fputs("push eax\n", output);
 
         } else if (try_match("[")) {
-            expr();
-            match("]");
+            fputs("push eax\n", output);
 
-            fputs("pop ebx\n"
-                  "pop ecx\n", output);
+            expr(0);
+            match("]");
 
             if (see("=") || see("++") || see("--"))
                 lvalue = true;
 
-            fprintf(output, "lea ebx, dword ptr [ebx*%d+ecx]\n", word_size);
-            fprintf(output, lvalue ? "push ebx\n" : "push dword ptr [ebx]\n");
+            fprintf(output, "pop ebx\n"
+                            "%s eax, [eax*%d+ebx]\n", lvalue ? "lea" : "mov", word_size);
 
         } else
-            break;
+            return;
     }
 }
 
 void unary () {
     if (try_match("!")) {
-        /*Recurse to allow chains of unary operations, LIFO order*/
+        //Recurse to allow chains of unary operations, LIFO order
         unary();
 
-        int true_label = new_label();
-        int join_label = new_label();
-
-        fprintf(output, "cmp dword ptr [esp], 0\n"
-                        "je _%08d\n", true_label);
-
-        fprintf(output, "mov dword ptr [esp], 0\n"
-                        "jmp _%08d\n", join_label);
-
-        fprintf(output, "\t_%08d:\n", true_label);
-        fputs("mov dword ptr [esp], 1\n", output);
-
-        fprintf(output, "\t_%08d:\n", join_label);
+        fputs("cmp eax, 0\n"
+              "mov eax, 0\n"
+              "sete al\n", output);
 
     } else if (try_match("-")) {
         unary();
-        fputs("neg dword ptr [esp]\n", output);
-
-    } else if (try_match("*")) {
-        unary();
-
-        if (see("=") || see("++") || see("--"))
-            lvalue = true;
-
-        else
-            fputs("pop ebx\n"
-                  "push dword ptr [ebx]", output);
+        fputs("neg eax\n", output);
 
     } else {
-        /*This function call compiles itself*/
+        //This function call compiles itself
         object();
 
         if (see("++") || see("--")) {
-            if (!lvalue)
-                error("assignment operator '%s' requires a modifiable object\n");
-
-            fprintf(output, "pop ebx\n"
-                            "push dword ptr [ebx]\n"
+            fprintf(output, "mov ebx, eax\n"
+                            "mov eax, [ebx]\n"
                             "%s dword ptr [ebx], 1\n", see("++") ? "add" : "sub");
 
-            lvalue = false;
-
-            accept();
+            needs_lvalue("assignment operator '%s' requires a modifiable object\n");
+            next();
         }
     }
 }
 
-void expr_3 () {
-    unary();
+void branch (bool expr);
 
-    while (see("+") || see("-") || see("*")) {
-        char* op = strdup(buffer);
-
-        accept();
+void expr (int level) {
+    if (level == 5) {
         unary();
-
-        fputs("pop ebx\n", output);
-
-        if (!strcmp(op, "*")) {
-            fputs("imul ebx, dword ptr [esp]\n"
-                  "mov dword ptr [esp], ebx\n", output);
-
-        } else
-            fprintf(output, "%s dword ptr [esp], ebx\n", !strcmp(op, "+") ? "add" : "sub");
-
-        free(op);
+        return;
     }
-}
 
-void expr_2 () {
-    expr_3();
+    expr(level+1);
 
-    while (see("==") || see("!=") || see("<") || see(">=")) {
-        char* condition = !strcmp(buffer, "==") ? "e" :
-                          !strcmp(buffer, "!=") ? "ne" :
-                          !strcmp(buffer, "<") ? "l" : "ge";
+    while (  level == 4 ? see("+") || see("-") || see("*")
+           : level == 3 ? see("==") || see("!=") || see("<") || see(">=")
+           : false) {
+        fputs("push eax\n", output);
 
-        accept();
-        expr_3();
+        char* instr = see("+") ? "add" : see("-") ? "sub" : see("*") ? "imul" :
+                      see("==") ? "e" : see("!=") ? "ne" : see("<") ? "l" : "ge";
 
-        fputs("pop ebx\n"
-              "cmp dword ptr [esp], ebx\n", output);
+        next();
+        expr(level+1);
 
-        int true_label = new_label();
-        int join_label = new_label();
+        if (level == 4)
+            fprintf(output, "mov ebx, eax\n"
+                            "pop eax\n"
+                            "%s eax, ebx\n", instr);
 
-        fprintf(output, "j%s _%08d\n", condition, true_label);
-        fprintf(output, "mov dword ptr [esp], 0\n"
-                        "jmp _%08d\n", join_label);
-        fprintf(output, "\t_%08d:\n", true_label);
-        fprintf(output, "mov dword ptr [esp], 1\n"
-                        "\t_%08d:\n", join_label);
+        else
+            fprintf(output, "pop ebx\n"
+                            "cmp ebx, eax\n"
+                            "mov eax, 0\n"
+                            "set%s al\n", instr);
     }
-}
 
-void expr_1 () {
-    expr_2();
-
-    while (see("||") || see("&&")) {
+    if (level == 2) while (see("||") || see("&&")) {
         int shortcircuit = new_label();
 
-        fprintf(output, "cmp dword ptr [esp], 0\n"
+        fprintf(output, "cmp eax, 0\n"
                         "j%s _%08d\n", see("||") ? "nz" : "z", shortcircuit);
-        fputs("pop ebx\n", output);
-
-        accept();
-        expr_2();
+        next();
+        expr(level+1);
 
         fprintf(output, "\t_%08d:\n", shortcircuit);
     }
-}
 
-void expr_0 () {
-    expr_1();
+    if (level == 1 && try_match("?"))
+        branch(true);
 
-    if (try_match("?")) {
-        int false_branch = new_label();
-        int join = new_label();
+    if (level == 0 && try_match("=")) {
+        fputs("push eax\n", output);
 
-        fprintf(output, "pop ebx\n"
-                        "cmp ebx, 0\n"
-                        "je _%08d\n", false_branch);
+        needs_lvalue("assignment requires a modifiable object\n");
+        expr(level+1);
 
-        expr_1();
-        match(":");
-
-        fprintf(output, "jmp _%08d\n", join);
-        fprintf(output, "\t_%08d:\n", false_branch);
-
-        expr_0();
-
-        fprintf(output, "\t_%08d:\n", join);
-    }
-}
-
-void expr () {
-    expr_0();
-
-    if (try_match("=")) {
-        if (!lvalue)
-            error("assignment requires a modifiable object\n");
-
-        lvalue = false;
-
-        expr_0();
-
-        fputs("pop ebx\n" "pop ecx\n"
-              "mov dword ptr [ecx], ebx\n", output);
+        fputs("pop ebx\n"
+              "mov dword ptr [ebx], eax\n", output);
     }
 }
 
 void line ();
 
-void if_branch () {
+void branch (bool isexpr) {
     int false_branch = new_label();
     int join = new_label();
 
-    match("if");
-    match("(");
-
-    expr();
-
-    fprintf(output, "pop ebx\n"
-                    "cmp ebx, 0\n"
+    fprintf(output, "cmp eax, 0\n"
                     "je _%08d\n", false_branch);
 
-    match(")");
-    line();
+    isexpr ? expr(1) : line();
 
     fprintf(output, "jmp _%08d\n", join);
     fprintf(output, "\t_%08d:\n", false_branch);
 
-    if (try_match("else"))
+    if (isexpr) {
+        match(":");
+        expr(1);
+
+    } else if (try_match("else"))
         line();
 
     fprintf(output, "\t_%08d:\n", join);
 }
 
+void if_branch () {
+    match("if");
+    match("(");
+    expr(0);
+    match(")");
+    branch(false);
+}
+
 void while_loop () {
     int loop_to = new_label();
-    int old_break_to = break_to;
-    break_to = new_label();
-
-    match("while");
-    match("(");
+    int break_to = new_label();
 
     fprintf(output, "\t_%08d:\n", loop_to);
 
-    expr();
+    bool do_while = try_match("do");
 
-    fprintf(output, "pop ebx\n"
-                    "cmp ebx, 0\n"
-                    "je _%08d\n", break_to);
+    if (do_while)
+        line();
 
+    match("while");
+    match("(");
+    expr(0);
     match(")");
 
-    line();
+    fprintf(output, "cmp eax, 0\n"
+                    "je _%08d\n", break_to);
+
+    if (do_while)
+        match(";");
+
+    else
+        line();
 
     fprintf(output, "jmp _%08d\n", loop_to);
     fprintf(output, "\t_%08d:\n", break_to);
-
-    /*Restore the break label for any outer loop*/
-    break_to = old_break_to;
 }
 
-void block () {
-    if (try_match("{")) {
-        while (waiting_for("}"))
-            line();
+void decl (int kind);
 
-        match("}");
-
-    } else
-        line();
-}
-
-void decl (int decl_case);
-
-/*See decl() implementation*/
+//See decl() implementation
 int decl_module = 1;
 int decl_local = 2;
 int decl_param = 3;
@@ -682,35 +565,33 @@ void line () {
     if (see("if"))
         if_branch();
 
-    else if (see("while"))
+    else if (see("while") || see("do"))
         while_loop();
 
-    else if (see("{"))
-        block();
-
-    else if (see("int") || see("char"))
+    else if (see("int") || see("char") || see("bool"))
         decl(decl_local);
 
-    else {
-        if (try_match("return")) {
-            if (waiting_for(";")) {
-                expr();
-                fputs("pop eax\n", output);
-                fprintf(output, "jmp _%08d\n", return_to);
-            }
+    else if (try_match("{")) {
+        while (waiting_for("}"))
+            line();
 
-        } else if (try_match("break")) {
-            fprintf(output, "jmp _%08d\n", break_to);
+        match("}");
 
-        } else if (waiting_for(";"))
-            expr();
+    } else {
+        bool ret = try_match("return");
+
+        if (waiting_for(";"))
+            expr(0);
+
+        if (ret)
+            fprintf(output, "jmp _%08d\n", return_to);
 
         match(";");
     }
 }
 
 void function (char* ident) {
-    /*Prologue*/
+    //Prologue
 
     fprintf(output, ".globl _%s\n", ident);
     fprintf(output, "_%s:\n", ident);
@@ -718,13 +599,13 @@ void function (char* ident) {
     fputs("push ebp\n"
           "mov ebp, esp\n", output);
 
-    /*Body*/
+    //Body
 
     return_to = new_label();
 
-    block();
+    line();
 
-    /*Epilogue*/
+    //Epilogue
 
     fprintf(output, "\t_%08d:\n", return_to);
     fputs("mov esp, ebp\n"
@@ -732,101 +613,87 @@ void function (char* ident) {
           "ret\n", output);
 }
 
-void decl (int decl_case) {
-    /*A C declaration comes in three forms:
-       - Local decls, which end in a semicolon and can have an initializer.
-       - Parameter decls, which do not and cannot.
-       - Module decls, which end in a semicolon unless there is a function body.*/
+void decl (int kind) {
+    //A C declaration comes in three forms:
+    // - Local decls, which end in a semicolon and can have an initializer.
+    // - Parameter decls, which do not and cannot.
+    // - Module decls, which end in a semicolon unless there is a function body.
 
-    int fn = false;
-    int fn_impl = false;
+    bool fn = false;
+    bool fn_impl = false;
     int local;
 
-    accept();
+    next();
 
     while (try_match("*"))
         ;
 
     char* ident = strdup(buffer);
-    accept();
+    next();
 
-    /*Functions*/
+    //Functions
     if (try_match("(")) {
-        if (decl_case == decl_module)
+        if (kind == decl_module)
             new_scope();
 
-        /*Params*/
-        if (waiting_for(")")) {
+        //Params
+        if (waiting_for(")")) do {
             decl(decl_param);
-
-            while (try_match(","))
-                decl(decl_param);
-        }
+        } while (try_match(","));
 
         match(")");
 
         new_fn(ident);
-
         fn = true;
 
-        /*Body*/
+        //Body
         if (see("{")) {
-            if (decl_case != decl_module)
-                error("a function implementation is illegal here\n");
+            require(kind == decl_module, "a function implementation is illegal here\n");
 
             fn_impl = true;
             function(ident);
         }
 
-    /*Add it to the symbol table*/
+    //Add it to the symbol table
     } else {
-        if (decl_case == decl_param) {
-            new_param(ident);
-
-        } else if (decl_case == decl_local) {
+        if (kind == decl_local) {
             local = new_local(ident);
             fprintf(output, "sub esp, %d\n", word_size);
 
         } else
-            new_global(ident);
+            (kind == decl_module ? new_global : new_param)(ident);
     }
 
-    /*Initialization*/
-    if (try_match("=")) {
-        if (fn)
-            error("cannot initialize a function\n");
+    //Initialization
 
-        if (decl_case == decl_module) {
-            if (token == token_int) {
-                fprintf(output, ".section .data\n"
-                                "_%s: .quad %d\n", ident, atoi(buffer));
-                fputs(".section .text\n", output);
-                accept();
+    if (see("="))
+        require(!fn && kind != decl_param,
+                fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
 
-            } else
+    if (kind == decl_module) {
+        fputs(".section .data\n", output);
+
+        if (try_match("=")) {
+            if (token == token_int)
+                fprintf(output, "_%s: .quad %d\n", ident, atoi(buffer));
+
+            else
                 error("expected a constant expression, found '%s'\n");
 
-        } else {
-            expr();
+            next();
 
-            if (decl_case == decl_local) {
-                fprintf(output, "pop ebx\n"
-                                "mov dword ptr [ebp-%d], ebx\n", local_offset(local));
-
-            } else
-                error("a variable initialization is illegal here\n");
-        }
-
-    } else {
-        if (decl_case == decl_module && !fn) {
-            fputs(".section .data\n", output);
-            /*Static data defaults to zero if no initializer*/
+        //Static data defaults to zero if no initializer
+        } else if (!fn)
             fprintf(output, "_%s: .quad 0\n", ident);
-            fputs(".section .text\n", output);
-        }
+
+        fputs(".section .text\n", output);
+
+    } else if (try_match("=")) {
+        expr(0);
+        fprintf(output, "mov dword ptr [ebp%+d], eax\n", offsets[local]);
     }
 
-    if (!fn_impl && decl_case != decl_param)
+    if (!fn_impl && kind != decl_param)
         match(";");
 }
 
@@ -851,14 +718,13 @@ int main (int argc, char** argv) {
 
     sym_init(256);
 
-    char* std_fns;
-    /*No arrays? Fine! A 0xFFFFFF terminated string of null terminated strings will do.
-      A negative-terminated null-terminated strings string, if you will*/
-    std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0feof\0fputs\0fprintf\0puts\0printf\0"
-              "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
+    //No arrays? Fine! A 0xFFFFFF terminated string of null terminated strings will do.
+    //A negative-terminated null-terminated strings string, if you will
+    char* std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0ungetc\0feof\0fputs\0fprintf\0puts\0printf\0"
+                    "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
 
-    /*Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
-      (char) 0xFF == -1, (int) 0xFFFFFF == -1*/
+    //Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
+    //(char) 0xFF == -1, (int) 0xFFFFFF == -1
     while (std_fns[0] != -1) {
         new_fn(std_fns);
         std_fns = std_fns+strlen(std_fns)+1;
