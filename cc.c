@@ -115,7 +115,7 @@ void next () {
 }
 
 void lex_init (char* filename, int maxlen) {
-    inputname = strdup(filename);
+    inputname = filename;
     input = fopen(filename, "r");
 
     //Get the lexer into a usable state for the parser
@@ -622,6 +622,7 @@ void decl (int kind) {
     while (try_match("*"))
         ;
 
+    //Owned (freed) by the symbol table
     char* ident = strdup(buffer);
     next();
 
@@ -720,7 +721,7 @@ int main (int argc, char** argv) {
     //Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
     //(char) 0xFF == -1, (int) 0xFFFFFF == -1
     while (std_fns[0] != -1) {
-        new_fn(std_fns);
+        new_fn(strdup(std_fns));
         std_fns = std_fns+strlen(std_fns)+1;
     }
 
