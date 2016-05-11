@@ -12,7 +12,6 @@ FILE* output;
 char* inputname;
 FILE* input;
 
-int curln;
 char curch;
 
 char* buffer;
@@ -25,24 +24,18 @@ int token_int = 2;
 int token_char = 3;
 int token_str = 4;
 
-void next_char () {
-    if (curch == '\n')
-        curln++;
-
-    curch = fgetc(input);
-}
 void eat_char () {
     (buffer + buflength++)[0] = curch;
-    next_char();
+    curch = fgetc(input);
 }
 
 void next () {
     while (curch == ' ' || curch == '\r' || curch == '\n' || curch == '\t')
-        next_char();
+        curch = fgetc(input);
 
     if (curch == '#') {
         while (curch != '\n' && feof(input) == false)
-            next_char();
+            curch = fgetc(input);
 
         next();
         return;
@@ -98,9 +91,8 @@ void lex_init (char* filename, int maxlen) {
     inputname = strdup(filename);
     input = fopen(filename, "r");
 
-    curln = 1;
     buffer = malloc(maxlen);
-    next_char();
+    curch = fgetc(input);
     next();
 }
 
@@ -112,7 +104,7 @@ void lex_end () {
 int errors;
 
 void error (char* format) {
-    printf("%s:%d: error: ", inputname, curln);
+    printf("%s: error: ", inputname);
     printf(format, buffer);
     errors++;
 }
@@ -132,7 +124,7 @@ bool waiting_for (char* look) {
 
 void match (char* look) {
     if (see(look) == false) {
-        printf("%s:%d: error: ", inputname, curln);
+        printf("%s: error: ", inputname);
         printf("expected '%s', found '%s'\n", look, buffer);
         errors++;
     }
