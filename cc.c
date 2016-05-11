@@ -156,8 +156,7 @@ bool waiting_for (char* look) {
 
 void match (char* look) {
     if (!see(look)) {
-        printf("%s:%d: error: ", inputname, curln);
-        printf("expected '%s', found '%s'\n", look, buffer);
+        printf("%s:%d: error: expected '%s', found '%s'\n", inputname, curln, look, buffer);
         errors++;
     }
 
@@ -176,22 +175,19 @@ bool try_match (char* look) {
 //==== Symbol table ====
 
 char** globals;
-int global_no;
+int global_no = 0;
 bool* is_fn;
 
 char** locals;
-int local_no;
-int param_no;
+int local_no = 0;
+int param_no = 0;
 int* offsets;
 
 void sym_init (int max) {
     globals = malloc(ptr_size*max);
-    global_no = 0;
     is_fn = calloc(max, ptr_size);
 
     locals = malloc(ptr_size*max);
-    local_no = 0;
-    param_no = 0;
     offsets = calloc(max, word_size);
 }
 
