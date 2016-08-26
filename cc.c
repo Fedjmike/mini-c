@@ -165,12 +165,12 @@ void match (char* look) {
 }
 
 bool try_match (char* look) {
-    if (see(look)) {
-        next();
-        return true;
+    bool saw = see(look);
 
-    } else
-        return false;
+    if (saw)
+        next();
+
+    return saw;
 }
 
 //==== Symbol table ====
@@ -335,6 +335,8 @@ void object () {
             int arg_no = 0;
 
             if (waiting_for(")")) {
+                //cdecl requires arguments to be pushed on backwards
+                
                 int start_label = new_label();
                 int end_label = new_label();
                 int prev_label = end_label;
@@ -641,7 +643,7 @@ void decl (int kind) {
 
     if (see("="))
         require(!fn && kind != decl_param,
-                fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
+                fn ? "cannot initialize a function\n" : "cannot initialize a parameter\n");
 
     if (kind == decl_module) {
         fputs(".section .data\n", output);
