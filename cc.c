@@ -131,11 +131,6 @@ void lex_init (char* filename, int maxlen) {
     next();
 }
 
-void lex_end () {
-    free(buffer);
-    fclose(input);
-}
-
 //==== Parser helper functions ====
 
 int errors;
@@ -197,23 +192,6 @@ void sym_init (int max) {
     offsets = calloc(max, word_size);
 }
 
-void table_end (char** table, int table_size) {
-    int i = 0;
-
-    while (i < table_size)
-        free(table[i++]);
-}
-
-void sym_end () {
-    table_end(globals, global_no);
-    free(globals);
-    free(is_fn);
-
-    table_end(locals, local_no);
-    free(locals);
-    free(offsets);
-}
-
 void new_global (char* ident) {
     globals[global_no++] = ident;
 }
@@ -245,7 +223,6 @@ void new_param (char* ident) {
 
 //Enter the scope of a new function
 void new_scope () {
-    table_end(locals, local_no);
     local_no = 0;
     param_no = 0;
 }
@@ -727,10 +704,6 @@ int main (int argc, char** argv) {
     }
 
     program();
-
-    lex_end();
-    sym_end();
-    fclose(output);
 
     return errors != 0;
 }
