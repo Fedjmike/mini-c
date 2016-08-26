@@ -72,18 +72,12 @@ void next () {
     buflength = 0;
     token = token_other;
 
-    //Identifier or keyword
-    if (isalpha(curch)) {
-        token = token_ident;
+    //Identifier, keyword or integer literal
+    if (isalpha(curch) || isdigit(curch)) {
+        token = isalpha(curch) ? token_ident : token_int;
 
-        while ((isalnum(curch) || curch == '_') && !feof(input))
-            eat_char();
-
-    //Integer literal
-    } else if (isdigit(curch)) {
-        token = token_int;
-
-        while (isdigit(curch) && !feof(input))
+        while (token == token_ident ? (isalnum(curch) || curch == '_') && !feof(input)
+                                    : isdigit(curch) && !feof(input))
             eat_char();
 
     //String or character literal
@@ -100,18 +94,12 @@ void next () {
 
         eat_char();
 
-    //Operators which form a new operator when duplicated e.g. '++'
-    } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
+    //Operators
+    } else if (   curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&'
+               || curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
-        if (curch == buffer[0])
-            eat_char();
-
-    //Operators which may be followed by a '='
-    } else if (curch == '!' || curch == '>' || curch == '<') {
-        eat_char();
-
-        if (curch == '=')
+        if ((buffer[0] == '!' || buffer[0] == '>' || buffer[0] == '<') ? curch == '=' : curch == buffer[0])
             eat_char();
 
     } else
