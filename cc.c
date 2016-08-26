@@ -44,16 +44,11 @@ void next () {
     buflength = 0;
     token = token_other;
 
-    if (isalpha(curch)) {
-        token = token_ident;
+    if (isalpha(curch) || isdigit(curch)) {
+        token = isalpha(curch) ? token_ident : token_int;
 
-        while ((isalnum(curch) || curch == '_') && feof(input) == false)
-            eat_char();
-
-    } else if (isdigit(curch)) {
-        token = token_int;
-
-        while (isdigit(curch) && feof(input) == false)
+        while (token == token_ident ? (isalnum(curch) || curch == '_') && feof(input) == false
+                                    : isdigit(curch) && feof(input) == false)
             eat_char();
 
     } else if (curch == '\'' || curch == '"') {
@@ -69,16 +64,11 @@ void next () {
 
         eat_char();
 
-    } else if (curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&') {
+    } else if (   curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&'
+               || curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
-        if (curch == buffer[0])
-            eat_char();
-
-    } else if (curch == '!' || curch == '>' || curch == '<') {
-        eat_char();
-
-        if (curch == '=')
+        if ((buffer[0] == '!' || buffer[0] == '>' || buffer[0] == '<') ? curch == '=' : curch == buffer[0])
             eat_char();
 
     } else
@@ -94,11 +84,6 @@ void lex_init (char* filename, int maxlen) {
     buffer = malloc(maxlen);
     curch = fgetc(input);
     next();
-}
-
-void lex_end () {
-    free(buffer);
-    fclose(input);
 }
 
 int errors;
@@ -124,8 +109,7 @@ bool waiting_for (char* look) {
 
 void match (char* look) {
     if (see(look) == false) {
-        printf("%s: error: ", inputname);
-        printf("expected '%s', found '%s'\n", look, buffer);
+        printf("%s: error: expected '%s', found '%s'\n", inputname, look, buffer);
         errors++;
     }
 
@@ -133,49 +117,29 @@ void match (char* look) {
 }
 
 bool try_match (char* look) {
-    if (see(look)) {
-        next();
-        return true;
+    bool saw = see(look);
 
-    } else
-        return false;
+    if (saw)
+        next();
+
+    return saw;
 }
 
 char** globals;
-int global_no;
+int global_no = 0;
 bool* is_fn;
 
 char** locals;
-int local_no;
-int param_no;
+int local_no = 0;
+int param_no = 0;
 int* offsets;
 
 void sym_init (int max) {
     globals = malloc(ptr_size*max);
-    global_no = 0;
     is_fn = calloc(max, ptr_size);
 
     locals = malloc(ptr_size*max);
-    local_no = 0;
-    param_no = 0;
     offsets = calloc(max, word_size);
-}
-
-void table_end (char** table, int table_size) {
-    int i = 0;
-
-    while (i < table_size)
-        free(table[i++]);
-}
-
-void sym_end () {
-    table_end(globals, global_no);
-    free(globals);
-    free(is_fn);
-
-    table_end(locals, local_no);
-    free(locals);
-    free(offsets);
 }
 
 void new_global (char* ident) {
@@ -201,7 +165,6 @@ void new_param (char* ident) {
 }
 
 void new_scope () {
-    table_end(locals, local_no);
     local_no = 0;
     param_no = 0;
 }
@@ -374,16 +337,16 @@ void expr (int level) {
         next();
         expr(level+1);
 
-        char* arith = "mov ebx, eax\n"
-                      "pop eax\n"
-                      "%s eax, ebx\n";
+        if (level == 4)
+            fprintf(output, "mov ebx, eax\n"
+                            "pop eax\n"
+                            "%s eax, ebx\n", instr);
 
-        char* comp = "pop ebx\n"
-                     "cmp ebx, eax\n"
-                     "mov eax, 0\n"
-                     "set%s al\n";
-
-        fprintf(output, level == 4 ? arith : comp, instr);
+        else
+            fprintf(output, "pop ebx\n"
+                            "cmp ebx, eax\n"
+                            "mov eax, 0\n"
+                            "set%s al\n", instr);
     }
 
     if (level == 2) while (see("||") || see("&&")) {
@@ -568,7 +531,7 @@ void decl (int kind) {
 
     if (see("="))
         require(fn == false && kind != decl_param,
-                fn ? "cannot initialize a function\n" : "cannot initialize a parameter");
+                fn ? "cannot initialize a function\n" : "cannot initialize a parameter\n");
 
     if (kind == decl_module) {
         fputs(".section .data\n", output);
@@ -626,10 +589,6 @@ int main (int argc, char** argv) {
     }
 
     program();
-
-    lex_end();
-    sym_end();
-    fclose(output);
 
     return errors != 0;
 }
