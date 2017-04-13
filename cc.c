@@ -53,9 +53,10 @@ void next () {
 
     } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
+        char delimiter = curch;
         eat_char();
 
-        while (curch != buffer[0] && feof(input) == false) {
+        while (curch != delimiter && feof(input) == false) {
             if (curch == '\\')
                 eat_char();
 
@@ -64,8 +65,8 @@ void next () {
 
         eat_char();
 
-    } else if (   curch == '+' || curch == '-' || curch == '=' || curch == '|' || curch == '&'
-               || curch == '!' || curch == '>' || curch == '<') {
+    } else if (   curch == '+' || curch == '-' || curch == '|' || curch == '&'
+               || curch == '=' || curch == '!' || curch == '>' || curch == '<') {
         eat_char();
 
         if ((buffer[0] == '!' || buffer[0] == '>' || buffer[0] == '<') ? curch == '=' : curch == buffer[0])
@@ -78,7 +79,7 @@ void next () {
 }
 
 void lex_init (char* filename, int maxlen) {
-    inputname = strdup(filename);
+    inputname = filename;
     input = fopen(filename, "r");
 
     buffer = malloc(maxlen);
@@ -187,6 +188,11 @@ int new_label () {
     return label_no++;
 }
 
+int emit_label (int label) {
+    fprintf(output, "_%08d:\n", label);
+    return label;
+}
+
 bool lvalue;
 
 void needs_lvalue (char* msg) {
@@ -226,10 +232,8 @@ void factor () {
         next();
 
     } else if (token == token_str) {
-        int str = new_label();
-
-        fprintf(output, ".section .rodata\n"
-                        "_%08d:\n", str);
+        fputs(".section .rodata\n", output);
+        int str = emit_label(new_label());
 
         while (token == token_str) {
             fprintf(output, ".ascii %s\n", buffer);
@@ -258,7 +262,7 @@ void object () {
 
             int arg_no = 0;
 
-            if (waiting_for(")")) {
+            if (waiting_for(")")) {                
                 int start_label = new_label();
                 int end_label = new_label();
                 int prev_label = end_label;
@@ -266,9 +270,7 @@ void object () {
                 fprintf(output, "jmp _%08d\n", start_label);
 
                 do {
-                    int next_label = new_label();
-
-                    fprintf(output, "_%08d:\n", next_label);
+                    int next_label = emit_label(new_label());
                     expr(0);
                     fprintf(output, "push eax\n"
                                     "jmp _%08d\n", prev_label);
@@ -407,10 +409,8 @@ void if_branch () {
 }
 
 void while_loop () {
-    int loop_to = new_label();
+    int loop_to = emit_label(new_label());
     int break_to = new_label();
-
-    fprintf(output, "\t_%08d:\n", loop_to);
 
     bool do_while = try_match("do");
 
@@ -471,20 +471,21 @@ void line () {
 }
 
 void function (char* ident) {
-    fprintf(output, ".globl %s\n", ident);
-    fprintf(output, "%s:\n", ident);
-
-    fputs("push ebp\n"
-          "mov ebp, esp\n", output);
-
+    int body = emit_label(new_label());
     return_to = new_label();
-
     line();
 
     fprintf(output, "\t_%08d:\n", return_to);
     fputs("mov esp, ebp\n"
           "pop ebp\n"
           "ret\n", output);
+    
+    fprintf(output, ".globl %s\n"
+                    "%s:\n", ident, ident);
+    fprintf(output, "push ebp\n"
+                    "mov ebp, esp\n"
+                    "sub esp, %d\n"
+                    "jmp _%08d\n", local_no*word_size, body);
 }
 
 void decl (int kind) {
@@ -523,7 +524,6 @@ void decl (int kind) {
     } else {
         if (kind == decl_local) {
             local = new_local(ident);
-            fprintf(output, "sub esp, %d\n", word_size);
 
         } else
             (kind == decl_module ? new_global : new_param)(ident);
