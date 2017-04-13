@@ -238,6 +238,11 @@ int new_label () {
     return label_no++;
 }
 
+int emit_label (int label) {
+    fprintf(output, "_%08d:\n", label);
+    return label;
+}
+
 //==== One-pass parser and code generator ====
 
 bool lvalue;
@@ -291,10 +296,8 @@ void factor () {
         next();
 
     } else if (token == token_str) {
-        int str = new_label();
-
-        fprintf(output, ".section .rodata\n"
-                        "_%08d:\n", str);
+        fputs(".section .rodata\n", output);
+        int str = emit_label(new_label());
 
         //Consecutive string literals are concatenated
         while (token == token_str) {
@@ -334,9 +337,7 @@ void object () {
                 fprintf(output, "jmp _%08d\n", start_label);
 
                 do {
-                    int next_label = new_label();
-
-                    fprintf(output, "_%08d:\n", next_label);
+                    int next_label = emit_label(new_label());
                     expr(0);
                     fprintf(output, "push eax\n"
                                     "jmp _%08d\n", prev_label);
@@ -491,10 +492,8 @@ void if_branch () {
 }
 
 void while_loop () {
-    int loop_to = new_label();
+    int loop_to = emit_label(new_label());
     int break_to = new_label();
-
-    fprintf(output, "\t_%08d:\n", loop_to);
 
     bool do_while = try_match("do");
 
@@ -558,8 +557,7 @@ void line () {
 void function (char* ident) {
     //Body
     
-    int body = new_label();
-    fprintf(output, "_%08d:\n", body);
+    int body = emit_label(new_label());
     return_to = new_label();
     line();
 
