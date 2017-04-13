@@ -83,9 +83,11 @@ void next () {
     //String or character literal
     } else if (curch == '\'' || curch == '"') {
         token = curch == '"' ? token_str : token_char;
+        //Can't retrieve this from the buffer - mini-c only has int reads
+        char delimiter = curch;
         eat_char();
 
-        while (curch != buffer[0] && !feof(input)) {
+        while (curch != delimiter && !feof(input)) {
             if (curch == '\\')
                 eat_char();
 
