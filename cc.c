@@ -686,14 +686,14 @@ int main (int argc, char** argv) {
 
     //No arrays? Fine! A 0xFFFFFF terminated string of null terminated strings will do.
     //A negative-terminated null-terminated strings string, if you will
-    char* std_fns = "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0ungetc\0feof\0fputs\0fprintf\0puts\0printf\0"
+    signed char* std_fns = (signed char *) "malloc\0calloc\0free\0atoi\0fopen\0fclose\0fgetc\0ungetc\0feof\0fputs\0fprintf\0puts\0printf\0"
                     "isalpha\0isdigit\0isalnum\0strlen\0strcmp\0strchr\0strcpy\0strdup\0\xFF\xFF\xFF\xFF";
 
     //Remember that mini-c is typeless, so this is both a byte read and a 4 byte read.
     //(char) 0xFF == -1, (int) 0xFFFFFF == -1
     while (std_fns[0] != -1) {
-        new_fn(strdup(std_fns));
-        std_fns = std_fns+strlen(std_fns)+1;
+        new_fn(strdup((char *)std_fns));
+        std_fns = std_fns+strlen((char *)std_fns)+1;
     }
 
     program();
